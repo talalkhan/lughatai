@@ -1,0 +1,1176 @@
+# LughatAI — Project Plan & Progress Tracker
+
+> **For agents:** Read CLAUDE.md first. Then read this file top-to-bottom before doing any work.
+> Update this file after every task: mark complete, add notes, update Current Status.
+
+---
+
+## Current Status
+
+```
+Last updated  : 2026-04-29
+Updated by    : [agent name here]
+Active phase  : Phase 0 — Project Bootstrap
+Current task  : P0-001 (first task — nothing started yet)
+Blocker       : None
+```
+
+### At-a-Glance Progress
+
+| Phase | Name | Status | Tasks Done |
+|-------|------|--------|-----------|
+| 0 | Bootstrap | [ ] Not started | 0 / 5 |
+| 1 | MVP Backend | [ ] Not started | 0 / 14 |
+| 2 | MVP Frontend | [ ] Not started | 0 / 11 |
+| 3 | Integration & Deploy | [ ] Not started | 0 / 6 |
+| 4 | Phase 2 Features | [ ] Not started | 0 / 12 |
+| 5 | PWA | [ ] Not started | 0 / 7 |
+| 6 | Monetization | [ ] Not started | 0 / 8 |
+
+**Total: 0 / 63 tasks complete**
+
+---
+
+## Status Key
+
+```
+[ ]  Not started
+[~]  In progress (add agent name + date: [~ Claude 2026-04-29])
+[x]  Complete (add date: [x 2026-04-29])
+[!]  Blocked (describe blocker in Notes)
+[-]  Skipped / deferred (with reason)
+```
+
+---
+
+## Phase 0 — Project Bootstrap
+**Goal:** Repo structure, local dev environment, database running, CI skeleton.
+**Gate to Phase 1:** Docker Compose works, DB migrations applied, API boots, frontend boots.
+
+---
+
+### P0-001 — Initialize repository structure
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Create the full folder structure as defined in CLAUDE.md. Init git repo.
+  Create placeholder `README.md` files in each major folder so git tracks them.
+- **Commands:**
+  ```bash
+  cd lughatai
+  git init
+  mkdir -p api/Controllers api/Services api/Models api/Data api/BackgroundJobs api/Prompts
+  mkdir -p web/app/word/\[slug\] web/app/browse web/app/flashcards web/app/quiz
+  mkdir -p web/app/favorites web/app/history web/app/auth
+  mkdir -p web/components web/lib/hooks
+  mkdir -p scripts infrastructure docs
+  ```
+- **Acceptance criteria:**
+  - [ ] All folders exist
+  - [ ] `git init` done, `.gitignore` covers `node_modules`, `bin/`, `obj/`, `.env*`, `appsettings.*.json`
+  - [ ] `docker-compose.yml` created (see P0-002)
+- **Notes:** —
+
+---
+
+### P0-002 — Docker Compose for local dev
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Create `docker-compose.yml` at repo root with PostgreSQL 16 and Redis.
+- **File:** `docker-compose.yml`
+- **Expected content:**
+  ```yaml
+  services:
+    postgres:
+      image: postgres:16-alpine
+      environment:
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_DB: lughatai
+      ports: ["5432:5432"]
+      volumes: [pgdata:/var/lib/postgresql/data]
+    redis:
+      image: redis:7-alpine
+      ports: ["6379:6379"]
+  volumes:
+    pgdata:
+  ```
+- **Acceptance criteria:**
+  - [ ] `docker-compose up -d` starts both services with no errors
+  - [ ] Can connect to Postgres: `psql -U postgres -d lughatai -h localhost`
+  - [ ] Redis responds: `redis-cli ping` returns PONG
+- **Notes:** —
+
+---
+
+### P0-003 — ASP.NET Core 8 project setup
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Scaffold ASP.NET Core 8 Web API project in `api/`. Add all required NuGet packages.
+- **Commands:**
+  ```bash
+  cd api
+  dotnet new webapi -n LughatAI.Api --no-openapi false
+  dotnet add package Dapper
+  dotnet add package Npgsql
+  dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
+  dotnet add package Microsoft.EntityFrameworkCore.Design
+  dotnet add package StackExchange.Redis
+  dotnet add package Anthropic.SDK   # or use raw HttpClient if not available
+  dotnet add package Microsoft.AspNetCore.Authentication.JwtBearer
+  dotnet add package Serilog.AspNetCore
+  ```
+- **File:** `api/Program.cs` — wire up DI, CORS, JWT, Redis, Swagger, Serilog
+- **Acceptance criteria:**
+  - [ ] `dotnet build` succeeds with no errors
+  - [ ] `dotnet run` starts API on port 5000
+  - [ ] `GET /swagger` returns Swagger UI
+  - [ ] Health check endpoint `GET /health` returns 200
+- **Notes:** Use `Anthropic.SDK` NuGet if available on NuGet.org; otherwise use `HttpClient` to
+  call `https://api.anthropic.com/v1/messages` directly with `x-api-key` header.
+
+---
+
+### P0-004 — Database schema + EF Core migrations
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Create EF Core models and run initial migration to create all Phase 1 tables.
+- **Tables to create (exact SQL in PRD Section 5):**
+  - `word_definitions` — primary cache table with JSONB `data` column
+  - `word_queue` — batch pipeline queue
+  - (Skip `users`, `user_favorites`, `user_history` — Phase 2)
+- **Files:**
+  - `api/Models/WordDefinition.cs`
+  - `api/Models/WordQueue.cs`
+  - `api/Data/AppDbContext.cs`
+- **Commands:**
+  ```bash
+  cd api
+  dotnet ef migrations add InitialSchema
+  dotnet ef database update
+  ```
+- **Indexes to create in migration (critical for performance):**
+  ```sql
+  CREATE INDEX idx_word_lower ON word_definitions(word_lower);
+  CREATE INDEX idx_lookup_count ON word_definitions(lookup_count DESC);
+  CREATE INDEX idx_data_gin ON word_definitions USING GIN(data);
+  ```
+- **Acceptance criteria:**
+  - [ ] Migration file created in `api/Data/Migrations/`
+  - [ ] `dotnet ef database update` runs with no errors
+  - [ ] All 3 indexes exist in the DB
+  - [ ] `word_lower` is a generated column (STORED), not application-managed
+- **Notes:** EF Core does not natively support PostgreSQL generated columns — use raw SQL in the
+  migration's `Up()` method via `migrationBuilder.Sql()` for the generated column and GIN index.
+
+---
+
+### P0-005 — Next.js 14 project setup
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Scaffold Next.js 14 app in `web/`. Configure Tailwind, fonts, TypeScript.
+- **Commands:**
+  ```bash
+  cd web
+  npx create-next-app@14 . --typescript --tailwind --eslint --app --src-dir=false --import-alias="@/*"
+  npm install
+  ```
+- **Font setup in `web/app/layout.tsx`:**
+  ```tsx
+  import { Noto_Nastaliq_Urdu } from 'next/font/google'
+  // weight: ['400', '700'], subsets: ['arabic']
+  // Apply as CSS variable --font-nastaliq
+  ```
+- **`web/lib/api.ts`:** Create typed API client using `fetch` with `NEXT_PUBLIC_API_URL` base.
+  Export typed functions: `getWord(word)`, `searchWords(q)`, `getWordOfTheDay()`, `browseWords(params)`.
+- **Acceptance criteria:**
+  - [ ] `npm run dev` starts on port 3000 with no errors
+  - [ ] `npm run build` produces no TypeScript errors
+  - [ ] Noto Nastaliq Urdu font loads (verify in browser DevTools Network tab)
+  - [ ] `lib/api.ts` exists with typed functions
+  - [ ] `.env.local` template documented in README
+- **Notes:** —
+
+---
+
+## Phase 1 — MVP Backend
+**Goal:** All API endpoints working. AI integration working. Cache-first flow working. Batch pipeline working.
+**Prerequisite:** Phase 0 gate passed.
+**Gate to Phase 2:** All endpoints return correct data. Word lookup end-to-end works (DB miss → AI → save → return).
+
+---
+
+### P1-001 — Word JSON model (C#)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Create C# record/class that exactly mirrors the JSON schema (PRD Section 6).
+  This is the DTO used for deserialization from AI and serialization to clients.
+- **File:** `api/Models/WordData.cs`
+- **Key nested types:** `Phonetic`, `Audio`, `Learning`, `Etymology`, `ScriptVariants`,
+  `Meaning`, `Translations`, `Synonyms`, `Antonyms`, `Example`, `Confusable`,
+  `WordFamilyEntry`, `RelatedWords`, `MemoryTip`, `UrduPoetry`, `UrduProverb`,
+  `IslamicReference`, `MetaInfo`
+- **Serialization:** Use `[JsonPropertyName("snake_case_field")]` attributes to match the JSON.
+  Or configure `JsonSerializerOptions` with `JsonNamingPolicy.SnakeCaseLower` globally.
+- **Acceptance criteria:**
+  - [ ] `JsonSerializer.Deserialize<WordData>(sampleJson)` works with the full sample JSON from PRD Section 6
+  - [ ] Re-serializing produces identical JSON (round-trip test)
+- **Notes:** The `_meta` field maps to a C# property named `Meta` with `[JsonPropertyName("_meta")]`.
+
+---
+
+### P1-002 — AI system prompt file
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Copy the exact system prompt from PRD Section 8.1 into a text file.
+  API reads this file at startup (not hardcoded in source).
+- **File:** `api/Prompts/ai_system_prompt.txt`
+- **Acceptance criteria:**
+  - [ ] File exists and contains the verbatim prompt from PRD Section 8.1
+  - [ ] File is read in `AIService` constructor (not hardcoded inline)
+- **Notes:** Never modify this prompt in code. Edit the file directly.
+
+---
+
+### P1-003 — AIService (Claude + OpenAI fallback)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Service that sends a word to Claude Haiku/Sonnet, parses the JSON response,
+  and returns a `WordData` object. Falls back to OpenAI GPT-4o Mini if Claude fails.
+- **File:** `api/Services/AIService.cs`
+- **Interface:** `IWordAIService` with method `Task<WordData> GenerateWordAsync(string word, bool usePremium = false)`
+- **Model selection:**
+  - `usePremium = false` → `claude-haiku-4-5-20251001` (batch and live hits for common words)
+  - `usePremium = true` → `claude-sonnet-4-6` (live cache miss for rare/edge-case words)
+- **Claude API call:**
+  ```
+  POST https://api.anthropic.com/v1/messages
+  Headers: x-api-key, anthropic-version: 2023-06-01, content-type: application/json
+  Body: { model, max_tokens: 4096, system: <prompt>, messages: [{ role: "user", content: word }] }
+  ```
+- **Error handling:**
+  - Retry once on 529 (overloaded) with 2s delay
+  - On Claude failure: log error, attempt OpenAI fallback
+  - On both failure: throw `AIServiceException`
+  - Validate returned JSON parses to `WordData` — if not, retry once with Sonnet
+- **Acceptance criteria:**
+  - [ ] `GenerateWordAsync("serenity")` returns a valid `WordData` object
+  - [ ] Fallback to OpenAI triggered when Claude returns non-200
+  - [ ] Invalid JSON from AI triggers one retry before throwing
+  - [ ] Model selection respects `usePremium` flag
+- **Notes:** Add `_meta.generated_by` and `_meta.generated_at` fields after parsing.
+
+---
+
+### P1-004 — CacheService (Redis)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Thin Redis wrapper for top-10k word caching. Redis is L1 cache, Postgres is L2.
+- **File:** `api/Services/CacheService.cs`
+- **Interface:** `ICacheService` with `GetWordAsync(word)`, `SetWordAsync(word, data, ttl?)`, `InvalidateWordAsync(word)`
+- **TTL:** No expiry (words don't change once generated). Only the top 10k most-looked-up words
+  are kept in Redis (eviction policy: `allkeys-lru`).
+- **Acceptance criteria:**
+  - [ ] Set/Get round-trip works with a `WordData` object
+  - [ ] Cache miss returns `null` (not throws)
+  - [ ] Redis connection failure does NOT crash the app — fall through to DB gracefully
+- **Notes:** Configure Redis `maxmemory-policy allkeys-lru` in docker-compose or Azure config.
+
+---
+
+### P1-005 — WordService (cache-first orchestration)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Core business logic. Implements the cache-first flow from PRD Section 3.2.
+- **File:** `api/Services/WordService.cs`
+- **Flow:**
+  ```
+  1. Normalize word (trim, lowercase, basic lemmatize)
+  2. Check Redis (L1 cache)  → hit: return, increment lookup_count async
+  3. Check PostgreSQL (L2)   → hit: set Redis, return, increment lookup_count async
+  4. Call AIService           → miss: generate, save to Postgres, set Redis, return
+  5. On AI failure            → return 503
+  ```
+- **Word normalization:** `word.Trim().ToLowerInvariant()`. No stemming in Phase 1.
+- **`lookup_count` increment:** Fire-and-forget (`_ = IncrementAsync(word)`). Never block the response.
+- **Files touched:** `api/Services/WordService.cs`, `api/Data/WordRepository.cs`
+- **Acceptance criteria:**
+  - [ ] Second call for same word hits Redis (verify with Redis `MONITOR` command)
+  - [ ] Third call after Redis flush hits Postgres (no AI call)
+  - [ ] First-ever call for a word calls AI exactly once
+  - [ ] `lookup_count` increments on each call
+- **Notes:** —
+
+---
+
+### P1-006 — WordController (GET /api/word/{word})
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Main word lookup endpoint.
+- **File:** `api/Controllers/WordController.cs`
+- **Endpoints in this controller:**
+  - `GET /api/word/{word}` → `200 WordData` or `503`
+  - `GET /api/word/random?difficulty=` → `200 WordData`
+  - `GET /api/word-of-the-day` → `200 WordData` (deterministic daily rotation via date seed)
+- **Word of the Day logic:** `SELECT word FROM word_definitions ORDER BY MD5(word || 'SALT' || CURRENT_DATE::text) LIMIT 1`
+- **Acceptance criteria:**
+  - [ ] `GET /api/word/hello` returns full WordData JSON
+  - [ ] `GET /api/word-of-the-day` returns same word all day, different next day
+  - [ ] `GET /api/word/random` returns a random word
+  - [ ] Input with spaces/uppercase normalized correctly
+- **Notes:** —
+
+---
+
+### P1-007 — SearchController (GET /api/search)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Autocomplete endpoint for search-as-you-type.
+- **File:** `api/Controllers/SearchController.cs`
+- **SQL:**
+  ```sql
+  SELECT word, data->'script_variants'->>'nastaliq' as urdu,
+         data->'learning'->>'difficulty' as difficulty
+  FROM word_definitions
+  WHERE word_lower LIKE @prefix
+  ORDER BY lookup_count DESC
+  LIMIT @limit
+  ```
+  Where `@prefix = query.ToLowerInvariant() + "%"`
+- **Acceptance criteria:**
+  - [ ] `GET /api/search?q=ser` returns words starting with "ser"
+  - [ ] Results ordered by `lookup_count DESC`
+  - [ ] Empty `q` or `q` < 2 chars returns `[]`
+  - [ ] Response time < 100ms (verify with local data)
+- **Notes:** —
+
+---
+
+### P1-008 — BrowseController (GET /api/browse)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Filter/browse words by difficulty, context, sentiment.
+- **File:** `api/Controllers/BrowseController.cs`
+- **SQL (JSONB queries):**
+  ```sql
+  -- Filter by context (e.g., "religion"):
+  WHERE data->'learning'->'contexts' @> '["religion"]'::jsonb
+  -- Filter by difficulty:
+  WHERE data->'learning'->>'difficulty' = @difficulty
+  -- Filter by CEFR:
+  WHERE data->'learning'->>'cefr_level' = @cefr
+  ```
+- **Response:** `{ words: [...], total: int, page: int, limit: int }`
+- **Acceptance criteria:**
+  - [ ] `GET /api/browse?context=religion` returns only religion-tagged words
+  - [ ] Pagination works correctly (`page`, `limit` params)
+  - [ ] Multiple filters combinable
+- **Notes:** —
+
+---
+
+### P1-009 — Rate limiting middleware
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** 60 requests/minute per IP for unauthenticated users.
+- **Implementation:** Use ASP.NET Core 8 built-in rate limiting (`Microsoft.AspNetCore.RateLimiting`).
+  Fixed window limiter: 60 requests per 60-second window per IP.
+- **File:** `api/Program.cs` (add middleware)
+- **Acceptance criteria:**
+  - [ ] 61st request within a minute returns `429 Too Many Requests`
+  - [ ] Response includes `Retry-After` header
+  - [ ] Admin endpoints exempt from rate limiting
+- **Notes:** —
+
+---
+
+### P1-010 — Word normalization + lemmatization
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Normalize user input before any DB lookup.
+  Phase 1: trim + lowercase only. Basic lemmatization: strip common suffixes.
+- **File:** `api/Services/WordNormalizer.cs`
+- **Rules (Phase 1):**
+  - `word.Trim().ToLowerInvariant()`
+  - Strip trailing punctuation
+  - Basic English lemmatization: "running" → "run", "cats" → "cat"
+  - Use a simple dictionary-based approach or `Catalyst` NLP library for .NET
+- **Acceptance criteria:**
+  - [ ] "  Running  " normalizes to "run"
+  - [ ] "CATS" normalizes to "cat"
+  - [ ] "serenity." normalizes to "serenity"
+- **Notes:** If a full lemmatization library adds too much complexity, do trim+lowercase only
+  and note this as Phase 2 enhancement. Don't over-engineer.
+
+---
+
+### P1-011 — AdminController (batch queue management)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Internal endpoints to manage the word batch pipeline.
+- **File:** `api/Controllers/AdminController.cs`
+- **Endpoints:**
+  - `GET /api/admin/queue/status` → `{ pending, processing, done, failed }`
+  - `POST /api/admin/queue/add` body: `{ words: string[] }` → adds to `word_queue`
+  - `POST /api/admin/queue/retry-failed` → resets failed words back to pending
+- **Security:** Require a static `X-Admin-Key` header (from env var). Not JWT — internal use only.
+- **Acceptance criteria:**
+  - [ ] Status endpoint returns correct counts
+  - [ ] Add endpoint inserts words with default priority 3
+  - [ ] Retry-failed resets `status='pending'` and `attempts=0` for failed words
+- **Notes:** —
+
+---
+
+### P1-012 — WordQueueProcessor (IHostedService)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Background service that processes the `word_queue` table to pre-populate the dictionary.
+- **File:** `api/BackgroundJobs/WordQueueProcessor.cs`
+- **Algorithm (from PRD Section 3.3):**
+  ```
+  Loop every 5 seconds:
+    1. SELECT 10 words WHERE status='pending' ORDER BY priority ASC FOR UPDATE SKIP LOCKED
+    2. SET status='processing'
+    3. Process 5 concurrently (SemaphoreSlim)
+    4. For each word: call AIService (Haiku), save to word_definitions, SET status='done'
+    5. On failure: increment attempts. If attempts >= 3: SET status='failed'. Else: SET status='pending'.
+    6. Exponential backoff on AI rate limit errors (429): 1s, 2s, 4s
+  ```
+- **Acceptance criteria:**
+  - [ ] Processor starts automatically when API starts
+  - [ ] Processes words at ~5 words/second sustained
+  - [ ] Words with 3 failures are marked 'failed' and not retried
+  - [ ] Processor does not crash if AI is unavailable (logs error, continues)
+  - [ ] `FOR UPDATE SKIP LOCKED` prevents duplicate processing in multi-instance scenarios
+- **Notes:** Disable processor via `appsettings.json` flag `"BatchProcessor": { "Enabled": false }`
+  for local dev when you don't want to burn AI credits.
+
+---
+
+### P1-013 — Seed script (top 10k words)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** SQL file that loads the top 10,000 most common English words into `word_queue`.
+- **File:** `scripts/seed_word_queue.sql`
+- **Format:**
+  ```sql
+  INSERT INTO word_queue (word, priority) VALUES
+  ('the', 1), ('be', 1), ('to', 1), ('of', 1), ('and', 1),
+  -- ... all 10,000 words
+  ON CONFLICT (word) DO NOTHING;
+  ```
+- **Word list source:** Use standard frequency lists (COCA, BNC, or similar).
+  Priority 1 = top 1000, Priority 2 = 1001–5000, Priority 3 = 5001–10000.
+- **Acceptance criteria:**
+  - [ ] Script inserts 10,000 rows with no errors
+  - [ ] Words already in `word_definitions` don't cause errors (ON CONFLICT DO NOTHING)
+  - [ ] Priority distribution: ~1000 P1, ~4000 P2, ~5000 P3
+- **Notes:** Can use a Python script to generate the SQL from a word frequency CSV if needed.
+
+---
+
+### P1-014 — Input sanitization + CORS
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Security hardening for Phase 1.
+- **Files:** `api/Program.cs`, `api/Middleware/InputSanitizer.cs`
+- **Requirements:**
+  - CORS: allow only origins listed in `Cors:AllowedOrigins` config
+  - Word input: max 150 chars, strip HTML/script tags, only allow `[a-zA-Z\s\-']`
+  - All endpoints served over HTTPS (redirect HTTP → HTTPS)
+  - Add security headers: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`
+- **Acceptance criteria:**
+  - [ ] `GET /api/word/<script>alert(1)</script>` returns 400
+  - [ ] CORS rejects requests from unlisted origins
+  - [ ] HTTP requests redirect to HTTPS (when running with certs)
+- **Notes:** —
+
+---
+
+## Phase 2 — MVP Frontend
+**Goal:** Next.js app with working home page, word detail page, search, and WOTD.
+**Prerequisite:** Phase 1 gate passed (API must be running and returning data).
+**Gate to Phase 3:** All pages load. Search works end-to-end. Urdu renders correctly.
+
+---
+
+### P2-001 — API client (lib/api.ts)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Typed fetch wrapper for all API calls. All components use this — never raw fetch.
+- **File:** `web/lib/api.ts`
+- **Exports:**
+  ```typescript
+  getWord(word: string): Promise<WordData>
+  searchWords(q: string, limit?: number): Promise<SearchResult[]>
+  getWordOfTheDay(): Promise<WordData>
+  browseWords(params: BrowseParams): Promise<BrowseResult>
+  getRandomWord(difficulty?: string): Promise<WordData>
+  ```
+- **Types file:** `web/lib/types.ts` — TypeScript interfaces mirroring the full JSON schema
+- **Error handling:** Throw typed `ApiError` with `status` and `message` fields.
+- **Acceptance criteria:**
+  - [ ] All functions typed with full WordData interface
+  - [ ] 404 throws `ApiError` with `status: 404`
+  - [ ] Uses `NEXT_PUBLIC_API_URL` env var (never hardcoded)
+- **Notes:** —
+
+---
+
+### P2-002 — SearchBar component
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Main search input with autocomplete dropdown.
+- **File:** `web/components/SearchBar.tsx`
+- **Behavior:**
+  - 300ms debounce on input
+  - Calls `searchWords(q)` when input >= 2 chars
+  - Shows dropdown with up to 10 results: English word + Urdu translation + difficulty badge
+  - Keyboard nav: arrow keys to select, Enter to navigate
+  - On submit (Enter or click): navigate to `/word/{word}`
+  - Clear button (×) when input has content
+  - Loading spinner during fetch
+- **Acceptance criteria:**
+  - [ ] Debounce: verify no API call on each keystroke (check Network tab)
+  - [ ] Dropdown shows after 2+ chars
+  - [ ] Selecting a result navigates to correct `/word/{word}` page
+  - [ ] Keyboard navigation works
+  - [ ] Mobile: input does not zoom on focus (font-size >= 16px)
+- **Notes:** —
+
+---
+
+### P2-003 — Home page (/)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Landing page with search bar and Word of the Day card.
+- **File:** `web/app/page.tsx`
+- **Layout:**
+  - Logo + tagline ("The richest Urdu dictionary, powered by AI")
+  - `SearchBar` centered prominently
+  - Word of the Day section below search (calls `getWordOfTheDay()`)
+  - Category browse links (Religion, Literature, Poetry, Business, etc.)
+- **WoTD card:** Shows English word, Urdu translation in Nastaliq, difficulty badge, short definition, "See full definition →" link.
+- **SEO:** `generateMetadata()` with title "LughatAI — AI-Powered English to Urdu Dictionary" + description.
+- **Acceptance criteria:**
+  - [ ] Page loads < 2.5s LCP
+  - [ ] WOTD card shows correct word (same for all users today)
+  - [ ] Category links navigate to `/browse?context={category}`
+  - [ ] Fully responsive 320px → 1440px
+- **Notes:** —
+
+---
+
+### P2-004 — Word detail page (/word/[slug])
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** SSR page displaying the full word entry. Most complex page in the app.
+- **File:** `web/app/word/[slug]/page.tsx`
+- **Must render (all from PRD Section 9.1):**
+  - English word (h1) + IPA phonetic + syllable breakdown
+  - Audio play buttons (English + Urdu) — calls AudioPlayer component
+  - Primary Urdu translation in large Nastaliq font (RTL, `dir="rtl"`, `lang="ur"`)
+  - Roman Urdu variant
+  - Difficulty badge + CEFR level badge
+  - Emoji visual association
+  - Context tags as chips (clickable → browse filter)
+  - Per-meaning sections: pos badge, EN/UR definitions, formal/colloquial labels
+  - Synonyms (EN + UR) as pill tags — clickable (EN) → navigate to that word
+  - Antonyms (EN + UR) as pill tags
+  - Collocations list
+  - 3 example sentences (EN + UR + Roman)
+  - Confusables section
+  - Word family (clickable links)
+  - See also (clickable links)
+  - Memory tip
+  - Urdu poetry (couplet + poet + translation) with AI-generated disclaimer
+  - Urdu proverb with translation
+  - Islamic/Quranic reference (only if present in data)
+  - Etymology section
+- **SSR + SEO:**
+  ```typescript
+  export async function generateMetadata({ params }) { /* word-specific meta */ }
+  // OpenGraph image, schema.org/DefinedTerm structured data
+  ```
+- **Acceptance criteria:**
+  - [ ] Page is server-rendered (view-source shows content)
+  - [ ] All sections render for a word with full data (e.g., "serenity")
+  - [ ] Urdu text renders right-to-left in Nastaliq font
+  - [ ] Null/missing sections (Islamic ref, poetry) do not render empty boxes
+  - [ ] Synonym pills navigate to correct word
+  - [ ] `<script type="application/ld+json">` with schema.org/DefinedTerm present
+  - [ ] OG tags include word, definition, Urdu translation
+- **Notes:** This is the most important page for SEO. Get SSR right.
+
+---
+
+### P2-005 — AudioPlayer component
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Play button for English and Urdu audio pronunciation.
+- **File:** `web/components/AudioPlayer.tsx`
+- **Behavior:**
+  - Shows play/pause button with "EN" or "UR" label
+  - If `audio_url` is null: button disabled with tooltip "Audio coming soon"
+  - On first click: triggers lazy audio generation via API (Phase 2 feature — for now just fetch the URL)
+  - HTML5 `<audio>` element (hidden) + custom button UI
+- **Acceptance criteria:**
+  - [ ] Plays audio when URL is present
+  - [ ] Disabled state when URL is null
+  - [ ] Touch target >= 44×44px
+- **Notes:** Actual TTS generation is Phase 1-003 in backend. For now, render button; audio URLs will be null until TTS is wired up.
+
+---
+
+### P2-006 — Browse page (/browse)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Filterable/browsable word list.
+- **File:** `web/app/browse/page.tsx`
+- **Filters (as UI chips/select):** Difficulty, CEFR level, Context category, Sentiment
+- **Word list:** Cards showing English word + Urdu translation + difficulty badge + 2-word definition preview
+- **Pagination:** "Load more" button (not page numbers)
+- **Acceptance criteria:**
+  - [ ] Selecting a filter updates URL params and re-fetches
+  - [ ] "Load more" appends next page results
+  - [ ] Shareable URL (filters in query params)
+- **Notes:** —
+
+---
+
+### P2-007 — WordCard component
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Compact word summary card used on Browse page and WOTD.
+- **File:** `web/components/WordCard.tsx`
+- **Props:** `word: WordData`, `variant: 'compact' | 'full'`
+- **Compact variant:** English word + Urdu nastaliq + difficulty badge + short English definition
+- **Full variant:** Everything in compact + emoji + context tags + link
+- **Acceptance criteria:**
+  - [ ] Renders without errors when optional fields (poetry, proverb) are null
+  - [ ] Urdu text RTL
+  - [ ] Clicking card navigates to `/word/{word}`
+- **Notes:** —
+
+---
+
+### P2-008 — Skeleton loading screens
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Skeleton placeholder UI for loading states on all data-fetching pages.
+- **Files:** `web/components/skeletons/WordDetailSkeleton.tsx`, `WordCardSkeleton.tsx`
+- **Acceptance criteria:**
+  - [ ] Word detail page shows skeleton while `loading.tsx` is active
+  - [ ] Browse page shows skeleton cards during fetch
+  - [ ] No layout shift when content loads
+- **Notes:** Use Tailwind `animate-pulse` on gray placeholder shapes.
+
+---
+
+### P2-009 — Error boundaries and 404 handling
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Friendly error states for API failures and unknown words.
+- **Files:** `web/app/error.tsx`, `web/app/not-found.tsx`, `web/app/word/[slug]/not-found.tsx`
+- **Word not found (404):** Show "We couldn't find '{word}'. Try a different spelling." + search bar.
+- **API error (500/503):** Show "Something went wrong. Please try again." + retry button.
+- **Acceptance criteria:**
+  - [ ] Visiting `/word/xyzxyz123` shows word-not-found page
+  - [ ] API being down shows friendly error (not raw error)
+- **Notes:** —
+
+---
+
+### P2-010 — Dark mode
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Full dark mode support using Tailwind's `dark:` variants and system preference.
+- **File:** `web/app/layout.tsx` (add `class="dark"` toggle), `web/tailwind.config.ts`
+- **Acceptance criteria:**
+  - [ ] App respects `prefers-color-scheme: dark` automatically
+  - [ ] All text readable in dark mode (no white-on-white or black-on-black)
+  - [ ] Urdu text legible in dark mode (Nastaliq on dark background)
+- **Notes:** —
+
+---
+
+### P2-011 — SEO + metadata
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Complete SEO setup for all pages.
+- **Files:** `web/app/layout.tsx`, each page's `generateMetadata()`
+- **Requirements:**
+  - Root layout: viewport, charset, default OG image, Twitter card
+  - Word detail: title = "{Word} in Urdu | LughatAI", description = first 160 chars of definition,
+    OG image = word + Urdu translation (can be a placeholder image for now),
+    `schema.org/DefinedTerm` JSON-LD
+  - Canonical URLs
+  - `robots.txt` and `sitemap.xml` (dynamic, listing all words)
+- **Acceptance criteria:**
+  - [ ] Lighthouse SEO score >= 90
+  - [ ] Schema.org JSON-LD validates at schema.org/SchemaApp validator
+  - [ ] OG tags visible in view-source
+- **Notes:** Sitemap will be large (10k+ words). Use streaming sitemap or multiple sitemap files.
+
+---
+
+## Phase 3 — Integration & Deploy
+**Goal:** Everything wired together and deployed to Azure.
+**Prerequisite:** Phase 1 + Phase 2 gates passed.
+**Gate to Phase 4:** App live on Azure. Batch pipeline running on 10k words. Monitoring active.
+
+---
+
+### P3-001 — Azure infrastructure (Bicep)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Infrastructure as Code for Azure resources.
+- **File:** `infrastructure/main.bicep`
+- **Resources to create:**
+  - Azure App Service (or Container Apps) for API
+  - Azure PostgreSQL Flexible Server
+  - Azure Cache for Redis
+  - Azure Blob Storage (for audio files)
+  - Azure Cognitive Services (Speech)
+  - Azure CDN profile
+- **Acceptance criteria:**
+  - [ ] `az deployment group create` runs with no errors
+  - [ ] All resources created in correct region (eastus or westus2)
+- **Notes:** —
+
+---
+
+### P3-002 — Azure DevOps pipeline
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** CI/CD pipelines for both API and web.
+- **Files:** `.azure/api-pipeline.yml`, `.azure/web-pipeline.yml`
+- **API pipeline:** build → test → publish → deploy to App Service
+- **Web pipeline:** npm install → lint → build → deploy to Static Web Apps or App Service
+- **Acceptance criteria:**
+  - [ ] Push to `main` triggers deploy
+  - [ ] Failed tests block deploy
+  - [ ] Environment variables injected from Azure Key Vault
+- **Notes:** —
+
+---
+
+### P3-003 — Audio TTS integration
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Lazy audio generation. On first play request, generate MP3, save to Azure Blob, update `audio.en_url` in DB.
+- **File:** `api/Services/AudioService.cs`
+- **Azure Speech SDK:** Use SSML for Urdu (`ur-PK-UzmaNeural` voice) and English (`en-US-JennyNeural`).
+- **Flow:**
+  ```
+  GET /api/word/{word}/audio?lang=en
+  → AudioService.GetOrGenerateAsync(word, lang)
+  → Check if URL exists in word's data.audio field
+  → If not: call Azure Speech TTS → upload to Blob → update word data → return URL
+  → Return redirect to CDN URL
+  ```
+- **Acceptance criteria:**
+  - [ ] First request generates and saves audio
+  - [ ] Second request returns cached CDN URL instantly
+  - [ ] Both EN and UR (ur-PK) voices work
+- **Notes:** —
+
+---
+
+### P3-004 — Datadog monitoring
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** APM, logs, and alerts.
+- **Setup:** Serilog → Datadog sink. Add Datadog APM NuGet package.
+- **Dashboards to create:**
+  - Request volume + p99 latency
+  - Cache hit rate (Redis hits / total requests)
+  - AI API call volume + cost estimate
+  - Batch pipeline: words/hour, queue depth, failure rate
+- **Alerts:**
+  - p99 latency > 500ms
+  - Error rate > 1%
+  - AI API failure rate > 5%
+- **Acceptance criteria:**
+  - [ ] Traces visible in Datadog APM
+  - [ ] Cache hit rate metric tracked
+  - [ ] All 3 alerts configured
+- **Notes:** —
+
+---
+
+### P3-005 — Run batch pipeline on 10k words
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Run the batch pipeline to pre-populate the top 10,000 words using Claude Haiku.
+- **Steps:**
+  1. Seed `word_queue` with `scripts/seed_word_queue.sql`
+  2. Enable batch processor in config
+  3. Monitor via `GET /api/admin/queue/status`
+  4. Verify ~$10–$15 cost in Anthropic dashboard
+- **Acceptance criteria:**
+  - [ ] All 10,000 words have status 'done'
+  - [ ] Failed words < 1% (< 100)
+  - [ ] All definitions valid JSON
+  - [ ] Cost < $20
+- **Notes:** Run at off-peak hours to avoid AI rate limits.
+
+---
+
+### P3-006 — End-to-end testing
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Basic E2E tests verifying the happy path.
+- **Tool:** Playwright
+- **Tests:**
+  - Search "serenity" → navigates to `/word/serenity` → page shows Urdu translation
+  - WOTD card on home page is visible
+  - Browse by "religion" context shows relevant words
+  - 404 for unknown word shows friendly message
+- **Acceptance criteria:**
+  - [ ] All 4 tests pass against production URL
+- **Notes:** —
+
+---
+
+## Phase 4 — User Accounts & Phase 2 Features
+**Goal:** Auth, favorites, history, flashcards, quiz, browse enhancements.
+**Prerequisite:** Phase 3 gate passed (app live, 10k words populated).
+
+---
+
+### P4-001 — User auth tables + migrations
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Add `users`, `user_favorites`, `user_history` tables (PRD Section 5.3–5.5).
+- **Files:** `api/Models/User.cs`, `api/Data/Migrations/AddUserTables.cs`
+- **Notes:** —
+
+---
+
+### P4-002 — AuthController (register, login, refresh)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** JWT-based auth. Tokens expire 1h, refresh tokens 30 days.
+- **File:** `api/Controllers/AuthController.cs`
+- **Endpoints:** `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`
+- **Notes:** —
+
+---
+
+### P4-003 — Favorites API endpoints
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** CRUD for user favorites. JWT required.
+- **File:** `api/Controllers/UserController.cs`
+- **Notes:** —
+
+---
+
+### P4-004 — History API endpoint
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Record and retrieve last 100 searches per user.
+- **File:** `api/Controllers/UserController.cs` (add to existing)
+- **Notes:** —
+
+---
+
+### P4-005 — Auth UI (login/register pages)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Login and register forms with JWT storage in httpOnly cookie.
+- **File:** `web/app/auth/page.tsx`
+- **Notes:** —
+
+---
+
+### P4-006 — Favorites page (/favorites)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **File:** `web/app/favorites/page.tsx`
+- **Notes:** —
+
+---
+
+### P4-007 — History page (/history)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **File:** `web/app/history/page.tsx`
+- **Notes:** —
+
+---
+
+### P4-008 — Flashcard mode (/flashcards)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Spaced repetition flashcards from PRD Section 9.2.
+  Show English word → tap to reveal Urdu → swipe right (known) / left (review).
+  Spaced repetition: use SM-2 algorithm. Custom decks from favorites.
+- **File:** `web/app/flashcards/page.tsx`
+- **Notes:** —
+
+---
+
+### P4-009 — Quiz mode (/quiz)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Multiple choice quiz (EN → UR, UR → EN, synonym quiz). Streak counter.
+- **File:** `web/app/quiz/page.tsx`
+- **Notes:** —
+
+---
+
+### P4-010 — Roman Urdu AI search
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Phase 2 enhancement: AI-powered interpretation of Roman Urdu input.
+  "sukoon" → look up by `roman_urdu` field first, then AI-interpret if not found.
+- **Notes:** Phase 1 only does string match against stored `roman_urdu` field.
+
+---
+
+### P4-011 — User corrections (flag button)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** "Report Error" button on word detail page. Logs to `corrections` table.
+  Admin can review and trigger AI regeneration.
+- **Notes:** Phase 1 deferred per PRD Decision #8.
+
+---
+
+### P4-012 — Poetry attribution verification
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Admin tool to review AI-generated poetry attributions. Mark verified/unverified.
+- **Notes:** Phase 1 ships with disclaimer banner. Phase 2 adds verification workflow.
+
+---
+
+## Phase 5 — PWA
+**Goal:** Progressive Web App with offline support, home screen install, push notifications.
+**Prerequisite:** Phase 4 gate passed.
+
+---
+
+### P5-001 — next-pwa setup
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Install and configure `next-pwa` (Workbox). Add `manifest.json`.
+- **Files:** `web/next.config.js`, `web/public/manifest.json`, `web/public/sw.js`
+- **Notes:** —
+
+---
+
+### P5-002 — Web App Manifest
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** `manifest.json` with app name, icons (192×192, 512×512), theme color, display: standalone.
+- **File:** `web/public/manifest.json`
+- **Notes:** —
+
+---
+
+### P5-003 — Offline word caching (IndexedDB)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Service Worker caches looked-up words in IndexedDB for offline access.
+  Pro users: pre-cache top 5k beginner + 5k intermediate words silently.
+- **Notes:** —
+
+---
+
+### P5-004 — Offline page shell
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Pre-cache app shell (layout, fonts, home page) for instant repeat loads.
+- **Notes:** —
+
+---
+
+### P5-005 — Web Push notifications
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Word of the Day push notification via Push API + Service Worker.
+  Daily at configurable time. Works on Android + iOS 16.4+.
+- **Notes:** —
+
+---
+
+### P5-006 — Install prompt (Android)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Show "Add to Home Screen" banner after 2nd visit on Android Chrome.
+- **Notes:** —
+
+---
+
+### P5-007 — PWA testing
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Lighthouse PWA audit score >= 90. Test offline mode. Test install flow.
+- **Notes:** —
+
+---
+
+## Phase 6 — Monetization
+**Goal:** Pro tier subscription, ads, API licensing portal.
+**Prerequisite:** Phase 5 gate passed.
+
+---
+
+### P6-001 — Stripe Checkout integration
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Pro tier: $2.99/month or $19.99/year. Stripe Checkout (no app store fee).
+- **Notes:** —
+
+---
+
+### P6-002 — Pro tier enforcement
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Gate Pro features (no ads, offline packs, extended history, exports) behind `tier='pro'` check.
+- **Notes:** —
+
+---
+
+### P6-003 — Ad integration (free tier)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Show ads for non-Pro users. Tasteful placement (not intrusive).
+- **Notes:** —
+
+---
+
+### P6-004 — PDF/CSV export
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Pro feature: export word lists as PDF or CSV.
+- **Notes:** —
+
+---
+
+### P6-005 — API licensing portal
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Developer signup for API keys. Free tier: 100 req/day. Paid tiers: 10k/100k/unlimited.
+- **Notes:** —
+
+---
+
+### P6-006 — OpenAPI documentation page (/api-docs)
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Public-facing API docs for B2B developers. Auto-generated from Swagger + custom layout.
+- **File:** `web/app/api-docs/page.tsx`
+- **Notes:** —
+
+---
+
+### P6-007 — B2B API key management
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Issue, rotate, and revoke API keys. Store hashed. Rate limit per key.
+- **Notes:** —
+
+---
+
+### P6-008 — Expand to 500k words
+- **Status:** `[ ]`
+- **Completed:** —
+- **Agent:** —
+- **Description:** Run batch pipeline to 500k words using Claude Haiku + GPT-4o Mini mix.
+  Estimated cost: $600–$800. Target: 14–28 hours of processing.
+- **Notes:** Monitor AI costs closely. Use GPT-4o Mini as primary for cost once past 100k.
+
+---
+
+## Completed Work Log
+
+> Append entries here as tasks are completed. Newest at the top.
+
+| Date | Agent | Task | Notes |
+|------|-------|------|-------|
+| — | — | — | Nothing completed yet |
+
+---
+
+## Known Issues / Blockers
+
+> Document any blockers here. Format: `[DATE] [AGENT] Description — Resolution pending`
+
+*None currently.*
+
+---
+
+## Questions for Owner (ThetaFoundry)
+
+> Agent: if you have a question that blocks progress, add it here and continue with unblocked tasks.
+
+1. What word frequency list should be used for the 10k seed? (COCA, BNC, Google Ngrams, or provide custom CSV?)
+2. What Azure region? (eastus recommended for cost, but owner may prefer westus2 for latency)
+3. Is there a preferred Datadog plan/organization to use?
+4. Should the admin endpoints be IP-restricted in addition to the API key header?
