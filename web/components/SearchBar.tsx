@@ -40,15 +40,18 @@ export default function SearchBar({ autoFocus = false }: { autoFocus?: boolean }
     if (query.length < 2) {
       setResults([]);
       setOpen(false);
+      setLoading(false);
       return;
     }
 
+    // Open immediately with a loading row so user gets instant feedback
+    setOpen(true);
+    setLoading(true);
+
     debounceRef.current = setTimeout(async () => {
-      setLoading(true);
       try {
         const data = await searchWords(query);
         setResults(data);
-        setOpen(true);
         setHighlighted(-1);
       } catch {
         setResults([]);
@@ -65,20 +68,24 @@ export default function SearchBar({ autoFocus = false }: { autoFocus?: boolean }
   function navigate(word: string) {
     setOpen(false);
     setQuery("");
-    router.push(`/word/${encodeURIComponent(word.toLowerCase())}`);
+    router.push(`/word/${encodeURIComponent(word.toLowerCase().trim())}`);
   }
+
+  // Total selectable items: cached results + always one "look up with AI" row
+  const lookupIndex = results.length;
+  const totalItems = loading ? 0 : results.length + 1;
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (!open) return;
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setHighlighted((h) => Math.min(h + 1, results.length - 1));
+      if (totalItems > 0) setHighlighted((h) => Math.min(h + 1, totalItems - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
       setHighlighted((h) => Math.max(h - 1, -1));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (highlighted >= 0 && results[highlighted]) {
+      if (!loading && highlighted >= 0 && highlighted < results.length) {
         navigate(results[highlighted].word);
       } else if (query.trim().length >= 2) {
         navigate(query.trim());
@@ -103,7 +110,7 @@ export default function SearchBar({ autoFocus = false }: { autoFocus?: boolean }
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            onFocus={() => results.length > 0 && setOpen(true)}
+            onFocus={() => query.length >= 2 && setOpen(true)}
             onBlur={() => setTimeout(() => setOpen(false), 150)}
             placeholder="Search any English word…"
             aria-label="Search for a word"
@@ -129,42 +136,85 @@ export default function SearchBar({ autoFocus = false }: { autoFocus?: boolean }
                        text-white rounded-xl text-sm font-medium transition-colors"
             aria-label="Search"
           >
-            {loading ? (
-              <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              "→"
-            )}
+            →
           </button>
         </div>
       </form>
 
-      {open && results.length > 0 && (
+      {open && (
         <ul
           role="listbox"
           className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-900 border border-gray-200
                      dark:border-gray-700 rounded-2xl shadow-xl overflow-hidden"
         >
-          {results.map((r, i) => (
-            <li
-              key={r.word}
-              role="option"
-              aria-selected={highlighted === i}
-              onMouseEnter={() => setHighlighted(i)}
-              onMouseDown={() => navigate(r.word)}
-              className={`flex items-center justify-between px-5 py-3 cursor-pointer transition-colors
-                ${highlighted === i ? "bg-indigo-50 dark:bg-indigo-950" : "hover:bg-gray-50 dark:hover:bg-gray-800"}`}
-            >
-              <div className="flex items-center gap-3">
-                <span className="font-medium text-gray-900 dark:text-gray-100">{r.word}</span>
-                {r.urdu && (
-                  <span dir="rtl" lang="ur" className="font-nastaliq text-lg text-gray-600 dark:text-gray-400">
-                    {r.urdu}
-                  </span>
-                )}
-              </div>
-              <DifficultyBadge difficulty={r.difficulty} />
+          {loading ? (
+            /* Searching skeleton */
+            <li className="flex items-center gap-3 px-5 py-4 text-gray-500 dark:text-gray-400">
+              <span className="inline-block w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+              <span className="text-sm">Searching…</span>
             </li>
-          ))}
+          ) : (
+            <>
+              {/* Cached results */}
+              {results.map((r, i) => (
+                <li
+                  key={r.word}
+                  role="option"
+                  aria-selected={highlighted === i}
+                  onMouseEnter={() => setHighlighted(i)}
+                  onMouseDown={() => navigate(r.word)}
+                  className={`flex items-center justify-between px-5 py-3 cursor-pointer transition-colors
+                    ${highlighted === i ? "bg-indigo-50 dark:bg-indigo-950" : "hover:bg-gray-50 dark:hover:bg-gray-800"}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{r.word}</span>
+                    {r.urdu && (
+                      <span dir="rtl" lang="ur" className="font-nastaliq text-lg text-gray-600 dark:text-gray-400">
+                        {r.urdu}
+                      </span>
+                    )}
+                  </div>
+                  <DifficultyBadge difficulty={r.difficulty} />
+                </li>
+              ))}
+
+              {/* Always-present "Look up with AI" row */}
+              <li
+                role="option"
+                aria-selected={highlighted === lookupIndex}
+                onMouseEnter={() => setHighlighted(lookupIndex)}
+                onMouseDown={() => navigate(query.trim())}
+                className={`flex items-center gap-3 px-5 py-3 cursor-pointer transition-colors
+                  ${results.length > 0 ? "border-t border-gray-100 dark:border-gray-800" : ""}
+                  ${highlighted === lookupIndex
+                    ? "bg-indigo-50 dark:bg-indigo-950"
+                    : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
+              >
+                <span className="text-lg">✨</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  {results.length === 0 ? (
+                    <>
+                      No cached results — look up{" "}
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        &ldquo;{query}&rdquo;
+                      </span>{" "}
+                      with AI
+                    </>
+                  ) : (
+                    <>
+                      Look up{" "}
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        &ldquo;{query}&rdquo;
+                      </span>{" "}
+                      with AI
+                    </>
+                  )}
+                </span>
+                <span className="ml-auto text-indigo-500 dark:text-indigo-400 text-sm font-medium">→</span>
+              </li>
+            </>
+          )}
         </ul>
       )}
     </div>
