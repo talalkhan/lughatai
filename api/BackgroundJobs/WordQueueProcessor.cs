@@ -53,22 +53,25 @@ public class WordQueueProcessor : BackgroundService
 
         _logger.LogInformation("Processing {Count} words from queue", batch.Count);
 
-        var tasks = batch.Select(item => ProcessWordAsync(repo, ai, item.Id, item.Word, ct));
+        var tasks = batch.Select(item => ProcessWordAsync(repo, ai, item.Id, item.Word, item.Priority, ct));
         await Task.WhenAll(tasks);
     }
 
-    private async Task ProcessWordAsync(IWordRepository repo, IWordAIService ai, int id, string word, CancellationToken ct)
+    private async Task ProcessWordAsync(IWordRepository repo, IWordAIService ai, int id, string word, int priority, CancellationToken ct)
     {
         await _semaphore.WaitAsync(ct);
         try
         {
             await repo.SetQueueStatusAsync(id, "processing");
 
-            var data = await ai.GenerateWordAsync(word, usePremium: false);
+            // Priority 1 = top ~1000 most common real words → Sonnet (richer quality)
+            // Priority 2+ = bulk words → Haiku (cost-effective)
+            var usePremium = priority == 1;
+            var data = await ai.GenerateWordAsync(word, usePremium);
             await repo.SaveWordAsync(word, data);
             await repo.SetQueueStatusAsync(id, "done");
 
-            _logger.LogInformation("Processed word '{Word}'", word);
+            _logger.LogInformation("Processed '{Word}' via {Model}", word, usePremium ? "sonnet" : "haiku");
         }
         catch (AIServiceException ex) when (ex.Message.Contains("429"))
         {
