@@ -278,10 +278,10 @@ public class WordRepository : IWordRepository
         using var conn = Connection();
         var sql = """
             SELECT
-                COUNT(*) FILTER (WHERE status = 'pending') as pending,
-                COUNT(*) FILTER (WHERE status = 'processing') as processing,
-                COUNT(*) FILTER (WHERE status = 'done') as done,
-                COUNT(*) FILTER (WHERE status = 'failed') as failed
+                COUNT(*) FILTER (WHERE status = 'pending')::int    as pending,
+                COUNT(*) FILTER (WHERE status = 'processing')::int as processing,
+                COUNT(*) FILTER (WHERE status = 'done')::int       as done,
+                COUNT(*) FILTER (WHERE status = 'failed')::int     as failed
             FROM word_queue
             """;
         return await conn.QuerySingleAsync<QueueStatus>(sql);

@@ -64,14 +64,13 @@ public class WordQueueProcessor : BackgroundService
         {
             await repo.SetQueueStatusAsync(id, "processing");
 
-            // Priority 1 = top ~1000 most common real words → Sonnet (richer quality)
-            // Priority 2+ = bulk words → Haiku (cost-effective)
-            var usePremium = priority == 1;
-            var data = await ai.GenerateWordAsync(word, usePremium);
+            // Batch processor always uses Haiku — fast, high rate limits, low cost.
+            // Sonnet is reserved for live user lookups (one at a time, no rate issue).
+            var data = await ai.GenerateWordAsync(word, usePremium: false);
             await repo.SaveWordAsync(word, data);
             await repo.SetQueueStatusAsync(id, "done");
 
-            _logger.LogInformation("Processed '{Word}' via {Model}", word, usePremium ? "sonnet" : "haiku");
+            _logger.LogInformation("Processed '{Word}' via haiku", word);
         }
         catch (AIServiceException ex) when (ex.Message.Contains("429"))
         {
