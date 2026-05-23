@@ -102,6 +102,13 @@ public class WordQueueProcessor : BackgroundService
             await repo.ResetToPendingAsync(id, ex.Message);
             _rateLimited = true;
         }
+        catch (AIServiceException ex) when (ex.Message.StartsWith("TRUNCATED:"))
+        {
+            // Response was cut off at max_tokens — not a content error, just needs more tokens.
+            // Reset to pending without burning an attempt. With max_tokens=8192 this should be rare.
+            _logger.LogWarning("Response truncated for word '{Word}', resetting to pending", word);
+            await repo.ResetToPendingAsync(id, ex.Message);
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to process word '{Word}'", word);

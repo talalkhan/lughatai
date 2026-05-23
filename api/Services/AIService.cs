@@ -104,7 +104,7 @@ public class AIService : IWordAIService
         var payload = new
         {
             model,
-            max_tokens = 4096,   // 4096 needed for rich Urdu content — truncation causes invalid JSON
+            max_tokens = 8192,   // 8192 for rich Urdu content — common words like "good"/"time" fill 4096+
             system = _systemPrompt,
             messages = new[] { new { role = "user", content = word } }
         };
@@ -127,7 +127,13 @@ public class AIService : IWordAIService
             // Rate limited — throw a recognisable message so callers can requeue
             // without triggering the OpenAI fallback
             if ((int)response.StatusCode == 429)
+            {
+                var retryAfter = response.Headers.RetryAfter?.Delta?.TotalSeconds;
+                var body429 = await response.Content.ReadAsStringAsync();
+                _logger.LogWarning("429 rate limit for '{Word}'. RetryAfter={RetryAfter}s. Body={Body}",
+                    word, retryAfter, body429[..Math.Min(300, body429.Length)]);
                 throw new AIServiceException($"429: Claude rate limited for '{word}'");
+            }
 
             // Overloaded — retry once after a short delay
             if ((int)response.StatusCode == 529 && attempt == 0)
@@ -143,10 +149,14 @@ public class AIService : IWordAIService
             var text = parsed?["content"]?[0]?["text"]?.GetValue<string>()
                 ?? throw new AIServiceException("Claude returned empty response");
 
-            // Warn if the model ran out of tokens — the JSON will be truncated and invalid
+            // If the model ran out of tokens the JSON is truncated and will fail to parse.
+            // Throw a recognisable exception so the caller can reset without burning an attempt.
             var stopReason = parsed?["stop_reason"]?.GetValue<string>();
             if (stopReason == "max_tokens")
-                _logger.LogWarning("Response truncated at max_tokens for word '{Word}' — increase max_tokens", word);
+            {
+                _logger.LogWarning("Response truncated at max_tokens for word '{Word}' — consider a shorter prompt", word);
+                throw new AIServiceException($"TRUNCATED: max_tokens exceeded for '{word}'");
+            }
 
             return ParseWordData(text, word);
         }
