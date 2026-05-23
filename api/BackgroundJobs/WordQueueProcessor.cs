@@ -8,16 +8,19 @@ public class WordQueueProcessor : BackgroundService
     private readonly IServiceProvider _services;
     private readonly IConfiguration _config;
     private readonly ILogger<WordQueueProcessor> _logger;
-    // 3 concurrent — safe for OpenAI (gpt-4o-mini has very high rate limits).
-    // Drop to 1 in config if switching back to Claude Haiku.
-    private readonly SemaphoreSlim _semaphore = new(3);
+    private readonly SemaphoreSlim _semaphore;
     private volatile bool _rateLimited = false;
 
     public WordQueueProcessor(IServiceProvider services, IConfiguration config, ILogger<WordQueueProcessor> logger)
     {
-        _services = services;
-        _config = config;
-        _logger = logger;
+        _services  = services;
+        _config    = config;
+        _logger    = logger;
+        // Concurrency is configurable: BatchProcessor:Concurrency in appsettings.
+        // Default 10 — safe for gpt-4o-mini (high TPM/RPM limits).
+        // Lower to 3 if switching back to Claude Haiku (tight per-minute quotas).
+        var concurrency = config.GetValue<int>("BatchProcessor:Concurrency", 10);
+        _semaphore = new SemaphoreSlim(concurrency);
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -28,7 +31,9 @@ public class WordQueueProcessor : BackgroundService
             return;
         }
 
-        _logger.LogInformation("WordQueueProcessor started");
+        var concurrency = _config.GetValue<int>("BatchProcessor:Concurrency", 10);
+        var batchSize   = _config.GetValue<int>("BatchProcessor:BatchSize", 20);
+        _logger.LogInformation("WordQueueProcessor started (concurrency={C}, batchSize={B})", concurrency, batchSize);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -61,8 +66,9 @@ public class WordQueueProcessor : BackgroundService
         var repo = scope.ServiceProvider.GetRequiredService<IWordRepository>();
         var ai = scope.ServiceProvider.GetRequiredService<IWordAIService>();
 
-        // Batch of 10, up to 3 concurrent (semaphore) — tuned for OpenAI's rate limits.
-        var batch = (await repo.GetPendingBatchAsync(10)).ToList();
+        // Batch size is configurable: BatchProcessor:BatchSize in appsettings.
+        var batchSize = _config.GetValue<int>("BatchProcessor:BatchSize", 20);
+        var batch = (await repo.GetPendingBatchAsync(batchSize)).ToList();
         if (batch.Count == 0) return;
 
         _logger.LogInformation("Processing {Count} words from queue", batch.Count);

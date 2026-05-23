@@ -8,13 +8,23 @@
 ## Current Status
 
 ```
-Last updated  : 2026-05-01
+Last updated  : 2026-05-23
 Updated by    : Claude Sonnet 4.6
-Active phase  : Phase 6 — Monetization
-Current task  : P6-001 (Stripe Checkout)
-Blocker       : P3-005 (batch pipeline run) still requires Azure credentials + Anthropic API key.
-                See scripts/batch_pipeline_runbook.md for operational steps.
+Active phase  : Data pipeline (batch word generation)
+Current task  : OpenAI Batch API — 14,087 P1+P2 words submitted, processing (~1-4h remaining)
+Next task     : P6-001 (Stripe Checkout) — resume after batch collection completes
 ```
+
+### Batch Pipeline State (2026-05-23)
+
+- 340,887 words loaded into word_queue (P1:1,931 P2:14,376 P3:324,580)
+- 2,382 definitions already in word_definitions (from live processor + test batch)
+- OpenAI Batch API jobs in flight:
+  - batch_6a122d4047a4819082966cc79fc60fb8 — 14,000 words (P1+P2), in_progress
+  - batch_6a122db6c9888190924ba7586182a124 — 17 words (P1+P2), completed (needs collect)
+- Tracking file: scripts/words/processed/openai_batches.json
+- **When batches complete:** run `.\scripts\batch_collect_openai.ps1` then `.\scripts\db_backup.ps1`
+- **P3 words (324K):** deferred — add $200+ OpenAI credit and run `.\scripts\batch_submit_openai.ps1`
 
 ### At-a-Glance Progress
 
