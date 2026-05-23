@@ -50,10 +50,13 @@ lughatai/
 │       ├── api.ts             ← API client (typed fetch wrapper)
 │       └── hooks/
 ├── scripts/
-│   ├── seed_word_queue.sql    ← Loads 10k words into word_queue
-│   └── export_definitions.sql
+│   ├── seed_word_queue.sql        ← Loads 10k words into word_queue
+│   ├── db_backup.ps1              ← Dump word_definitions → data/word_definitions_backup.sql
+│   └── db_restore.ps1             ← Restore from that file into running Postgres
+├── data/
+│   └── word_definitions_backup.sql ← ⚠ CRITICAL: committed SQL backup of all AI-generated words
 ├── infrastructure/            ← Azure Bicep IaC (Phase 1 end)
-└── docker-compose.yml         ← Local dev: Postgres + Redis
+└── docker-compose.yml         ← Local dev: Postgres on 5433, Redis on 6379
 ```
 
 ---
@@ -86,7 +89,7 @@ Create `api/appsettings.Development.json` (never commit secrets):
 ```json
 {
   "ConnectionStrings": {
-    "Default": "Host=localhost;Port=5432;Database=lughatai;Username=postgres;Password=postgres"
+    "Default": "Host=localhost;Port=5433;Database=lughatai;Username=postgres;Password=postgres"
   },
   "Redis": {
     "Connection": "localhost:6379"
@@ -122,25 +125,71 @@ NEXT_PUBLIC_API_URL=http://localhost:5000
 
 ## Local Dev Setup
 
-```bash
-# 1. Start infrastructure
-docker-compose up -d
+```powershell
+# 1. Start infrastructure (Postgres on port 5433, Redis on 6379)
+docker compose up -d
 
 # 2. Run DB migrations
-cd api && dotnet ef database update
+cd api; dotnet ef database update
 
-# 3. Seed word queue (after migrations)
-psql -U postgres -d lughatai -f scripts/seed_word_queue.sql
+# 3. Seed word queue (optional — loads 10k words for batch processing)
+docker compose exec -T postgres psql -U postgres -d lughatai -f /dev/stdin < scripts/seed_word_queue.sql
 
 # 4. Start API
-cd api && dotnet run
+cd api; dotnet run
 
 # 5. Start frontend
-cd web && npm install && npm run dev
+cd web; npm install; npm run dev
 ```
 
 API runs on http://localhost:5000
 Frontend runs on http://localhost:3000
+
+> **Port note:** Docker Postgres is mapped to **5433** (not 5432) to avoid conflicts
+> with a local Windows PostgreSQL service. The connection string in
+> `appsettings.Development.json` must use `Port=5433`.
+
+---
+
+## Database Safety — Backup & Restore
+
+`data/word_definitions_backup.sql` is a **committed SQL dump** of every
+AI-generated word definition. It is your safety net. If Docker is wiped,
+your laptop dies, or anything else goes wrong, this file plus git is all
+you need to recover.
+
+### After every generation session — back up and push
+
+```powershell
+.\scripts\db_backup.ps1
+# prints the word count and the exact git commands to run:
+git add data\word_definitions_backup.sql
+git commit -m "backup: 847 words"
+git push
+```
+
+### Full disaster recovery from scratch
+
+```powershell
+git pull                            # get latest backup from GitHub
+docker compose up -d                # fresh containers
+cd api; dotnet ef database update   # apply schema
+cd ..; .\scripts\db_restore.ps1     # restore all words (~1 min for 10k)
+# → "Restore complete: 847 words in database"
+```
+
+### Storage layers at a glance
+
+| Layer | What's stored | Survives |
+|-------|--------------|---------|
+| GitHub `data/word_definitions_backup.sql` | All AI-generated definitions | Everything — laptop death, Docker wipe |
+| Docker `pgdata` named volume | Same, live copy | `docker compose down` ✅  `docker compose down -v` ❌ |
+| Redis | Hot cache only | Container restart ❌ (auto-refills from Postgres) |
+
+### ⚠ Never run `docker compose down -v` unless you intend to wipe the DB
+
+`-v` deletes named volumes including `pgdata`. Always back up first if you
+need to do a full reset.
 
 ---
 
