@@ -8,9 +8,9 @@ public class WordQueueProcessor : BackgroundService
     private readonly IServiceProvider _services;
     private readonly IConfiguration _config;
     private readonly ILogger<WordQueueProcessor> _logger;
-    // 1 concurrent call at a time — Haiku rate limits are tight enough that
-    // 2 concurrent routinely triggers 429s. Sequential with inter-call delay is safer.
-    private readonly SemaphoreSlim _semaphore = new(1);
+    // 3 concurrent — safe for OpenAI (gpt-4o-mini has very high rate limits).
+    // Drop to 1 in config if switching back to Claude Haiku.
+    private readonly SemaphoreSlim _semaphore = new(3);
     private volatile bool _rateLimited = false;
 
     public WordQueueProcessor(IServiceProvider services, IConfiguration config, ILogger<WordQueueProcessor> logger)
@@ -61,21 +61,14 @@ public class WordQueueProcessor : BackgroundService
         var repo = scope.ServiceProvider.GetRequiredService<IWordRepository>();
         var ai = scope.ServiceProvider.GetRequiredService<IWordAIService>();
 
-        // Small batch + sequential (semaphore=1) + 3s inter-call gap keeps us
-        // safely under Haiku's output-token-per-minute rate limit.
-        var batch = (await repo.GetPendingBatchAsync(5)).ToList();
+        // Batch of 10, up to 3 concurrent (semaphore) — tuned for OpenAI's rate limits.
+        var batch = (await repo.GetPendingBatchAsync(10)).ToList();
         if (batch.Count == 0) return;
 
         _logger.LogInformation("Processing {Count} words from queue", batch.Count);
 
-        // Process sequentially with a 3s gap between calls to spread token consumption
-        // and stay under Haiku's output-token-per-minute rate limit.
-        for (int i = 0; i < batch.Count; i++)
-        {
-            if (_rateLimited) break; // abort batch early if rate-limited mid-way
-            if (i > 0) await Task.Delay(3_000, ct);
-            await ProcessWordAsync(repo, ai, batch[i].Id, batch[i].Word, batch[i].Priority, ct);
-        }
+        var tasks = batch.Select(item => ProcessWordAsync(repo, ai, item.Id, item.Word, item.Priority, ct));
+        await Task.WhenAll(tasks);
     }
 
     private async Task ProcessWordAsync(IWordRepository repo, IWordAIService ai, int id, string word, int priority, CancellationToken ct)

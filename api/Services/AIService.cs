@@ -49,6 +49,27 @@ public class AIService : IWordAIService
             ? _config["AI:LiveModel"] ?? "claude-sonnet-4-6"
             : _config["AI:BatchModel"] ?? "claude-haiku-4-5-20251001";
 
+        // If the configured batch model is an OpenAI model (gpt-*), route directly
+        // to OpenAI — no Claude attempt, no fallback dance.
+        if (model.StartsWith("gpt-", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var result = await CallOpenAIAsync(word, model);
+                result.Meta ??= new MetaInfo();
+                result.Meta.GeneratedBy = "openai";
+                result.Meta.GeneratedAt = DateTime.UtcNow.ToString("O");
+                result.Meta.Model = model;
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "OpenAI failed for word '{Word}'", word);
+                throw new AIServiceException($"OpenAI failed for word '{word}'", ex);
+            }
+        }
+
+        // Claude path
         try
         {
             var result = await CallClaudeAsync(word, model);
@@ -61,7 +82,7 @@ public class AIService : IWordAIService
         catch (AIServiceException ex) when (ex.Message.StartsWith("429:"))
         {
             // Rate limit — don't fall back to OpenAI, just re-throw so the batch
-            // processor can back off and requeue. OpenAI would hit the same limit.
+            // processor can back off and requeue.
             _logger.LogWarning("Rate limited by Claude API for '{Word}', requeueing", word);
             throw;
         }
@@ -73,7 +94,6 @@ public class AIService : IWordAIService
 
             if (!openAiConfigured)
             {
-                // No valid OpenAI key — surface the Claude error directly
                 _logger.LogError(claudeEx, "Claude failed for word '{Word}' (no OpenAI fallback configured)", word);
                 throw new AIServiceException($"Claude failed for word '{word}'", claudeEx);
             }
@@ -81,7 +101,7 @@ public class AIService : IWordAIService
             _logger.LogError(claudeEx, "Claude failed for word '{Word}', attempting OpenAI fallback", word);
             try
             {
-                var result = await CallOpenAIAsync(word);
+                var result = await CallOpenAIAsync(word, "gpt-4o-mini");
                 result.Meta ??= new MetaInfo();
                 result.Meta.GeneratedBy = "openai";
                 result.Meta.GeneratedAt = DateTime.UtcNow.ToString("O");
@@ -164,15 +184,15 @@ public class AIService : IWordAIService
         throw new AIServiceException("Claude returned 529 after retry");
     }
 
-    private async Task<WordData> CallOpenAIAsync(string word)
+    private async Task<WordData> CallOpenAIAsync(string word, string model = "gpt-4o-mini")
     {
         var apiKey = _config["AI:OpenAIApiKey"]
             ?? throw new AIServiceException("OpenAI API key not configured");
 
         var payload = new
         {
-            model = "gpt-4o-mini",
-            max_tokens = 4096,
+            model,
+            max_tokens = 8192,   // match Claude budget; GPT-4o-mini supports up to 16384
             messages = new[]
             {
                 new { role = "system", content = _systemPrompt },
@@ -197,6 +217,13 @@ public class AIService : IWordAIService
         var parsed = JsonNode.Parse(body);
         var text = parsed?["choices"]?[0]?["message"]?["content"]?.GetValue<string>()
             ?? throw new AIServiceException("OpenAI returned empty response");
+
+        var finishReason = parsed?["choices"]?[0]?["finish_reason"]?.GetValue<string>();
+        if (finishReason == "length")
+        {
+            _logger.LogWarning("OpenAI response truncated at max_tokens for word '{Word}'", word);
+            throw new AIServiceException($"TRUNCATED: max_tokens exceeded for '{word}'");
+        }
 
         return ParseWordData(text, word);
     }

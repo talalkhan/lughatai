@@ -65,13 +65,14 @@ public class WordRepository : IWordRepository
     {
         using var conn = Connection();
         var json = JsonSerializer.Serialize(data, JsonOpts);
+        var model = data.Meta?.Model ?? "unknown";
         var sql = """
-            INSERT INTO word_definitions (word, data)
-            VALUES (@word, @data::jsonb)
+            INSERT INTO word_definitions (word, data, model)
+            VALUES (@word, @data::jsonb, @model)
             ON CONFLICT (word_lower) DO UPDATE
-            SET data = @data::jsonb, updated_at = now()
+            SET data = @data::jsonb, model = @model, updated_at = now()
             """;
-        await conn.ExecuteAsync(sql, new { word, data = json });
+        await conn.ExecuteAsync(sql, new { word, data = json, model });
     }
 
     public async Task IncrementLookupCountAsync(string wordLower)
