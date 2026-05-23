@@ -104,7 +104,7 @@ public class AIService : IWordAIService
         var payload = new
         {
             model,
-            max_tokens = 2048,   // 2048 is plenty; 4096 burned rate-limit tokens unnecessarily
+            max_tokens = 4096,   // 4096 needed for rich Urdu content — truncation causes invalid JSON
             system = _systemPrompt,
             messages = new[] { new { role = "user", content = word } }
         };
@@ -142,6 +142,11 @@ public class AIService : IWordAIService
             var parsed = JsonNode.Parse(body);
             var text = parsed?["content"]?[0]?["text"]?.GetValue<string>()
                 ?? throw new AIServiceException("Claude returned empty response");
+
+            // Warn if the model ran out of tokens — the JSON will be truncated and invalid
+            var stopReason = parsed?["stop_reason"]?.GetValue<string>();
+            if (stopReason == "max_tokens")
+                _logger.LogWarning("Response truncated at max_tokens for word '{Word}' — increase max_tokens", word);
 
             return ParseWordData(text, word);
         }
