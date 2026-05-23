@@ -45,3 +45,12 @@ data/*.tmp
 .terraform/
 *.tfstate
 *.tfstate.backup
+
+# Generated word-list processing output (large files, regenerate with process_word_list.ps1)
+scripts/words/processed/
+
+# Claude Code session files
+.claude/
+
+# Misc log files
+api_log.txt

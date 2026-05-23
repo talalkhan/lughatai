@@ -84,7 +84,7 @@ public class WordQueueProcessor : BackgroundService
             await repo.SaveWordAsync(word, data);
             await repo.SetQueueStatusAsync(id, "done");
 
-            _logger.LogInformation("Processed '{Word}' via haiku", word);
+            _logger.LogInformation("Processed '{Word}' (batch model: {Model})", word, _config["AI:BatchModel"] ?? "default");
         }
         catch (AIServiceException ex) when (ex.Message.Contains("429"))
         {
