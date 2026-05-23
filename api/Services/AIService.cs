@@ -58,6 +58,13 @@ public class AIService : IWordAIService
             result.Meta.Model = model;
             return result;
         }
+        catch (AIServiceException ex) when (ex.Message.StartsWith("429:"))
+        {
+            // Rate limit — don't fall back to OpenAI, just re-throw so the batch
+            // processor can back off and requeue. OpenAI would hit the same limit.
+            _logger.LogWarning("Rate limited by Claude API for '{Word}', requeueing", word);
+            throw;
+        }
         catch (Exception claudeEx)
         {
             _logger.LogError(claudeEx, "Claude failed for word '{Word}', attempting OpenAI fallback", word);
@@ -86,7 +93,7 @@ public class AIService : IWordAIService
         var payload = new
         {
             model,
-            max_tokens = 4096,
+            max_tokens = 2048,   // 2048 is plenty; 4096 burned rate-limit tokens unnecessarily
             system = _systemPrompt,
             messages = new[] { new { role = "user", content = word } }
         };
@@ -106,6 +113,12 @@ public class AIService : IWordAIService
 
             using var response = await client.SendAsync(request);
 
+            // Rate limited — throw a recognisable message so callers can requeue
+            // without triggering the OpenAI fallback
+            if ((int)response.StatusCode == 429)
+                throw new AIServiceException($"429: Claude rate limited for '{word}'");
+
+            // Overloaded — retry once after a short delay
             if ((int)response.StatusCode == 529 && attempt == 0)
             {
                 await Task.Delay(2000);

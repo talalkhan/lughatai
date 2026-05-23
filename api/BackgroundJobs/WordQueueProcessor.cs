@@ -8,7 +8,7 @@ public class WordQueueProcessor : BackgroundService
     private readonly IServiceProvider _services;
     private readonly IConfiguration _config;
     private readonly ILogger<WordQueueProcessor> _logger;
-    private readonly SemaphoreSlim _semaphore = new(5);
+    private readonly SemaphoreSlim _semaphore = new(2); // 2 concurrent keeps us under rate limits
 
     public WordQueueProcessor(IServiceProvider services, IConfiguration config, ILogger<WordQueueProcessor> logger)
     {
