@@ -95,18 +95,19 @@ $devSettings = if (Test-Path "api/appsettings.Development.json") {
     Get-Content "api/appsettings.Development.json" -Raw | ConvertFrom-Json
 } else { $null }
 
-$anthropicKey = $devSettings?.AI?.AnthropicApiKey
+try { $anthropicKey = $devSettings.AI.AnthropicApiKey } catch { $anthropicKey = $null }
 if ($anthropicKey -and $anthropicKey.Length -gt 10) {
-    Write-Ok "Anthropic API key" "configured  (sk-ant-...$(($anthropicKey)[-4..-1] -join ''))"
+    $tail = $anthropicKey.Substring([math]::Max(0, $anthropicKey.Length - 4))
+    Write-Ok "Anthropic API key" "configured  (...$tail)"
 } else {
     Write-Fail "Anthropic API key" "not set in appsettings.Development.json"
     $issues.Add("Add Anthropic key to api/appsettings.Development.json under AI:AnthropicApiKey")
 }
 
 # Batch processor
-$batchEnabled = $devSettings?.BatchProcessor?.Enabled
+try { $batchEnabled = $devSettings.BatchProcessor.Enabled } catch { $batchEnabled = $null }
 if (-not $batchEnabled) {
-    $batchEnabled = (Get-Content "api/appsettings.json" -Raw | ConvertFrom-Json)?.BatchProcessor?.Enabled
+    try { $batchEnabled = (Get-Content "api/appsettings.json" -Raw | ConvertFrom-Json).BatchProcessor.Enabled } catch {}
 }
 if ($batchEnabled -eq $true) {
     Write-Ok "Batch processor" "enabled"

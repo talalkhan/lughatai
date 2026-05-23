@@ -9,6 +9,7 @@ public class WordQueueProcessor : BackgroundService
     private readonly IConfiguration _config;
     private readonly ILogger<WordQueueProcessor> _logger;
     private readonly SemaphoreSlim _semaphore = new(2); // 2 concurrent keeps us under rate limits
+    private volatile bool _rateLimited = false;
 
     public WordQueueProcessor(IServiceProvider services, IConfiguration config, ILogger<WordQueueProcessor> logger)
     {
@@ -29,6 +30,16 @@ public class WordQueueProcessor : BackgroundService
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            // If any worker signalled a rate limit, pause the whole processor
+            // for 60 s before fetching a new batch. This lets the API quota reset.
+            if (_rateLimited)
+            {
+                _rateLimited = false;
+                _logger.LogWarning("Rate limited — pausing processor for 60 s");
+                await Task.Delay(60_000, stoppingToken);
+                continue;
+            }
+
             try
             {
                 await ProcessBatchAsync(stoppingToken);
@@ -74,14 +85,21 @@ public class WordQueueProcessor : BackgroundService
         }
         catch (AIServiceException ex) when (ex.Message.Contains("429"))
         {
-            _logger.LogWarning("Rate limited on word '{Word}', will retry", word);
-            await repo.IncrementQueueAttemptsAsync(id, ex.Message);
-            // Exponential backoff is handled at the batch level via the 5s loop delay
+            // Rate limit is a timing issue, not a content failure.
+            // Reset to pending WITHOUT burning an attempt so the word stays healthy.
+            // Signal the batch loop to pause 60 s before the next batch.
+            _logger.LogWarning("Rate limited on word '{Word}', resetting to pending (no attempt burned)", word);
+            await repo.ResetToPendingAsync(id, ex.Message);
+            _rateLimited = true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to process word '{Word}'", word);
-            await repo.IncrementQueueAttemptsAsync(id, ex.Message);
+            // Store inner exception message too so we can diagnose root causes from the DB
+            var msg = ex.InnerException != null
+                ? $"{ex.Message} | Inner: {ex.InnerException.Message}"
+                : ex.Message;
+            await repo.IncrementQueueAttemptsAsync(id, msg);
         }
         finally
         {

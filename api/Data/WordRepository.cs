@@ -28,6 +28,7 @@ public interface IWordRepository
     Task<IEnumerable<WordQueue>> GetPendingBatchAsync(int count);
     Task SetQueueStatusAsync(int id, string status, string? errorMessage = null);
     Task IncrementQueueAttemptsAsync(int id, string? errorMessage = null);
+    Task ResetToPendingAsync(int id, string? errorMessage = null);
 }
 
 public record SearchResult(string Word, string? Urdu, string? Difficulty);
@@ -329,6 +330,22 @@ public class WordRepository : IWordRepository
             UPDATE word_queue
             SET attempts = attempts + 1,
                 status = CASE WHEN attempts + 1 >= 3 THEN 'failed' ELSE 'pending' END,
+                error_message = @errorMessage,
+                updated_at = now()
+            WHERE id = @id
+            """;
+        await conn.ExecuteAsync(sql, new { id, errorMessage });
+    }
+
+    // Reset a word back to pending without burning an attempt.
+    // Used for transient errors like rate limits where the word is fine
+    // but we just need to wait before retrying.
+    public async Task ResetToPendingAsync(int id, string? errorMessage = null)
+    {
+        using var conn = Connection();
+        var sql = """
+            UPDATE word_queue
+            SET status = 'pending',
                 error_message = @errorMessage,
                 updated_at = now()
             WHERE id = @id

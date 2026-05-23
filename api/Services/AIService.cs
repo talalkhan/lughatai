@@ -67,6 +67,17 @@ public class AIService : IWordAIService
         }
         catch (Exception claudeEx)
         {
+            var openAiKey = _config["AI:OpenAIApiKey"];
+            var openAiConfigured = !string.IsNullOrWhiteSpace(openAiKey)
+                                   && openAiKey != "YOUR_KEY";
+
+            if (!openAiConfigured)
+            {
+                // No valid OpenAI key — surface the Claude error directly
+                _logger.LogError(claudeEx, "Claude failed for word '{Word}' (no OpenAI fallback configured)", word);
+                throw new AIServiceException($"Claude failed for word '{word}'", claudeEx);
+            }
+
             _logger.LogError(claudeEx, "Claude failed for word '{Word}', attempting OpenAI fallback", word);
             try
             {
@@ -217,14 +228,18 @@ public class AIService : IWordAIService
 
     private WordData ParseWordData(string text, string word)
     {
-        var json = text.Trim();
-        // Strip markdown fences if present
-        if (json.StartsWith("```"))
-        {
-            var start = json.IndexOf('\n') + 1;
-            var end = json.LastIndexOf("```");
-            if (end > start) json = json[start..end].Trim();
-        }
+        // Extract the JSON object by finding the first { and last }.
+        // This handles any wrapping Claude adds: markdown fences, preamble
+        // text, trailing commentary — none of it matters.
+        var raw = text ?? string.Empty;
+        var jsonStart = raw.IndexOf('{');
+        var jsonEnd   = raw.LastIndexOf('}');
+
+        if (jsonStart < 0 || jsonEnd <= jsonStart)
+            throw new AIServiceException(
+                $"AI returned no JSON object for word '{word}'. Raw: {raw[..Math.Min(200, raw.Length)]}");
+
+        var json = raw[jsonStart..(jsonEnd + 1)];
 
         try
         {
