@@ -61,10 +61,10 @@ try
         }
     });
 
-    // HTTP clients
-    builder.Services.AddHttpClient("claude");
-    builder.Services.AddHttpClient("openai");
-    builder.Services.AddHttpClient("speech");
+    // HTTP clients — 90s timeout prevents hung connections from stalling the batch processor
+    builder.Services.AddHttpClient("claude",  c => c.Timeout = TimeSpan.FromSeconds(90));
+    builder.Services.AddHttpClient("openai",  c => c.Timeout = TimeSpan.FromSeconds(90));
+    builder.Services.AddHttpClient("speech",  c => c.Timeout = TimeSpan.FromSeconds(30));
 
     // Application services
     builder.Services.AddScoped<IWordRepository, WordRepository>();
