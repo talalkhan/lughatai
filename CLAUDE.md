@@ -291,6 +291,32 @@ Invoke-RestMethod -Method POST http://localhost:5000/api/admin/queue/retry-faile
 Any word a real user looks up that isn't in the DB is automatically generated
 by Claude Sonnet and cached permanently. You don't need to pre-generate every word.
 
+### Adding more words after the initial 10k
+
+**From a text file** (one word per line, `#` lines are comments):
+```powershell
+# High-quality domains (Sonnet) — religious, emotional, literary vocabulary
+.\scripts\add_words.ps1 -File scripts\words\islamic_religious.txt  -Priority 1
+.\scripts\add_words.ps1 -File scripts\words\emotions_psychology.txt -Priority 1
+
+# Bulk domains (Haiku) — academic, tech, professional
+.\scripts\add_words.ps1 -File scripts\words\academic_formal.txt -Priority 2
+.\scripts\add_words.ps1 -File scripts\words\technology.txt      -Priority 2
+
+# Your own list — just make a .txt file and point at it
+.\scripts\add_words.ps1 -File scripts\words\my_custom_list.txt -Priority 2
+```
+
+Words already in the queue or already defined are silently skipped — safe to run multiple times.
+See `scripts/words/README.md` for the full list of curated domain files.
+
+**Single word via API** (API must be running):
+```powershell
+Invoke-RestMethod -Method POST http://localhost:5000/api/admin/queue/add `
+  -Headers @{ 'X-Admin-Key' = 'dev-admin-key-change-in-production'; 'Content-Type' = 'application/json' } `
+  -Body '{ "words": ["ephemeral", "solitude"], "priority": 1 }'
+```
+
 ---
 
 ## Architecture Decisions (Locked — Do Not Revisit)

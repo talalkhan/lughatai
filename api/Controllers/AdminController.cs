@@ -32,8 +32,9 @@ public class AdminController : ControllerBase
         if (request.Words == null || request.Words.Length == 0)
             return BadRequest(new { error = "Words array is required" });
 
-        await _repo.AddToQueueAsync(request.Words);
-        return Ok(new { added = request.Words.Length });
+        var priority = Math.Clamp(request.Priority ?? 2, 1, 5);
+        await _repo.AddToQueueAsync(request.Words, priority);
+        return Ok(new { added = request.Words.Length, priority });
     }
 
     [HttpPost("queue/retry-failed")]
@@ -92,4 +93,4 @@ public class AdminController : ControllerBase
     }
 }
 
-public record AddWordsRequest(string[] Words);
+public record AddWordsRequest(string[] Words, int? Priority);

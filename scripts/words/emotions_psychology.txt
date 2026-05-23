@@ -1,0 +1,93 @@
+# Emotions & Psychology
+# These translate with particular richness into Urdu — high cultural value
+# Usage: .\scripts\add_words.ps1 -File scripts\words\emotions_psychology.txt -Priority 1
+
+# Primary emotions
+melancholy
+nostalgia
+longing
+yearning
+grief
+sorrow
+anguish
+despair
+euphoria
+elation
+serenity
+tranquility
+contentment
+bliss
+ecstasy
+
+# Complex emotional states
+ambivalence
+bittersweet
+remorse
+regret
+guilt
+shame
+embarrassment
+jealousy
+envy
+resentment
+indignation
+contempt
+disgust
+awe
+reverence
+
+# Character & personality
+resilience
+perseverance
+tenacity
+fortitude
+courage
+audacity
+timidity
+arrogance
+humility
+empathy
+sympathy
+compassion
+apathy
+indifference
+sincerity
+hypocrisy
+
+# Psychological concepts
+anxiety
+depression
+trauma
+grief
+denial
+acceptance
+attachment
+abandonment
+validation
+vulnerability
+boundaries
+manipulation
+gaslighting
+introspection
+self-awareness
+consciousness
+subconscious
+instinct
+intuition
+perception
+
+# Interpersonal emotions
+affection
+adoration
+devotion
+loyalty
+betrayal
+reconciliation
+forgiveness
+estrangement
+solidarity
+camaraderie
+intimacy
+alienation
+loneliness
+belonging

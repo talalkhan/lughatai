@@ -1,0 +1,110 @@
+# Technology & Modern Vocabulary
+# Increasingly used in Pakistani English — important for younger audience
+# Usage: .\scripts\add_words.ps1 -File scripts\words\technology.txt -Priority 2
+
+# Computing fundamentals
+algorithm
+software
+hardware
+database
+network
+protocol
+encryption
+authentication
+authorization
+interface
+framework
+repository
+deployment
+infrastructure
+latency
+bandwidth
+throughput
+scalability
+redundancy
+vulnerability
+
+# Artificial intelligence
+artificial intelligence
+machine learning
+neural network
+deep learning
+natural language processing
+computer vision
+automation
+robotics
+algorithm
+dataset
+training
+inference
+prediction
+classification
+clustering
+
+# Internet & web
+browser
+server
+client
+domain
+hosting
+bandwidth
+cache
+cookie
+firewall
+malware
+phishing
+cybersecurity
+privacy
+surveillance
+censorship
+
+# Digital society
+cryptocurrency
+blockchain
+digital currency
+social media
+platform
+algorithm
+viral
+misinformation
+disinformation
+deepfake
+anonymity
+transparency
+digital divide
+accessibility
+inclusion
+
+# Engineering & science
+semiconductor
+microprocessor
+nanotechnology
+biotechnology
+renewable energy
+solar panel
+battery
+electric vehicle
+satellite
+quantum computing
+simulation
+prototype
+innovation
+disruption
+convergence
+
+# Medical technology
+vaccination
+antibiotic
+pandemic
+epidemic
+genome
+DNA
+mutation
+therapy
+diagnosis
+prognosis
+symptom
+chronic
+acute
+immunity
+quarantine
