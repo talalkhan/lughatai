@@ -36,6 +36,11 @@ Thumbs.db
 .idea/
 .vscode/settings.json
 
+# Database backups — these SHOULD be committed (they are your safety net)
+# data/word_definitions_backup.sql is intentionally tracked by git
+# Only exclude temp/partial files
+data/*.tmp
+
 # Azure / Terraform
 .terraform/
 *.tfstate
