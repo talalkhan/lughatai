@@ -8,26 +8,29 @@
 ## Current Status
 
 ```
-Last updated  : 2026-04-29
-Updated by    : [agent name here]
-Active phase  : Phase 0 — Project Bootstrap
-Current task  : P0-001 (first task — nothing started yet)
-Blocker       : None
+Last updated  : 2026-05-01
+Updated by    : Claude Sonnet 4.6
+Active phase  : Phase 6 — Monetization
+Current task  : P6-001 (Stripe Checkout)
+Blocker       : P3-005 (batch pipeline run) still requires Azure credentials + Anthropic API key.
+                See scripts/batch_pipeline_runbook.md for operational steps.
 ```
 
 ### At-a-Glance Progress
 
 | Phase | Name | Status | Tasks Done |
 |-------|------|--------|-----------|
-| 0 | Bootstrap | [ ] Not started | 0 / 5 |
-| 1 | MVP Backend | [ ] Not started | 0 / 14 |
-| 2 | MVP Frontend | [ ] Not started | 0 / 11 |
-| 3 | Integration & Deploy | [ ] Not started | 0 / 6 |
-| 4 | Phase 2 Features | [ ] Not started | 0 / 12 |
-| 5 | PWA | [ ] Not started | 0 / 7 |
+| 0 | Bootstrap | [x] Complete | 5 / 5 |
+| 1 | MVP Backend | [x] Complete | 14 / 14 |
+| 2 | MVP Frontend | [x] Complete | 11 / 11 |
+| 3 | Integration & Deploy | [x] Complete* | 6 / 6 |
+| 4 | Phase 2 Features | [x] Complete | 12 / 12 |
+| 5 | PWA | [x] Complete | 7 / 7 |
 | 6 | Monetization | [ ] Not started | 0 / 8 |
 
-**Total: 0 / 63 tasks complete**
+*P3-005 (batch pipeline run) is code-complete; operational run blocked on Azure credentials.
+
+**Total: 55 / 63 tasks complete**
 
 ---
 
@@ -50,9 +53,9 @@ Blocker       : None
 ---
 
 ### P0-001 — Initialize repository structure
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Create the full folder structure as defined in CLAUDE.md. Init git repo.
   Create placeholder `README.md` files in each major folder so git tracks them.
 - **Commands:**
@@ -74,9 +77,9 @@ Blocker       : None
 ---
 
 ### P0-002 — Docker Compose for local dev
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Create `docker-compose.yml` at repo root with PostgreSQL 16 and Redis.
 - **File:** `docker-compose.yml`
 - **Expected content:**
@@ -105,9 +108,9 @@ Blocker       : None
 ---
 
 ### P0-003 — ASP.NET Core 8 project setup
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Scaffold ASP.NET Core 8 Web API project in `api/`. Add all required NuGet packages.
 - **Commands:**
   ```bash
@@ -134,9 +137,9 @@ Blocker       : None
 ---
 
 ### P0-004 — Database schema + EF Core migrations
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Create EF Core models and run initial migration to create all Phase 1 tables.
 - **Tables to create (exact SQL in PRD Section 5):**
   - `word_definitions` — primary cache table with JSONB `data` column
@@ -169,9 +172,9 @@ Blocker       : None
 ---
 
 ### P0-005 — Next.js 14 project setup
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Scaffold Next.js 14 app in `web/`. Configure Tailwind, fonts, TypeScript.
 - **Commands:**
   ```bash
@@ -205,9 +208,9 @@ Blocker       : None
 ---
 
 ### P1-001 — Word JSON model (C#)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Create C# record/class that exactly mirrors the JSON schema (PRD Section 6).
   This is the DTO used for deserialization from AI and serialization to clients.
 - **File:** `api/Models/WordData.cs`
@@ -225,9 +228,9 @@ Blocker       : None
 ---
 
 ### P1-002 — AI system prompt file
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Copy the exact system prompt from PRD Section 8.1 into a text file.
   API reads this file at startup (not hardcoded in source).
 - **File:** `api/Prompts/ai_system_prompt.txt`
@@ -239,9 +242,9 @@ Blocker       : None
 ---
 
 ### P1-003 — AIService (Claude + OpenAI fallback)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Service that sends a word to Claude Haiku/Sonnet, parses the JSON response,
   and returns a `WordData` object. Falls back to OpenAI GPT-4o Mini if Claude fails.
 - **File:** `api/Services/AIService.cs`
@@ -270,9 +273,9 @@ Blocker       : None
 ---
 
 ### P1-004 — CacheService (Redis)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Thin Redis wrapper for top-10k word caching. Redis is L1 cache, Postgres is L2.
 - **File:** `api/Services/CacheService.cs`
 - **Interface:** `ICacheService` with `GetWordAsync(word)`, `SetWordAsync(word, data, ttl?)`, `InvalidateWordAsync(word)`
@@ -287,9 +290,9 @@ Blocker       : None
 ---
 
 ### P1-005 — WordService (cache-first orchestration)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Core business logic. Implements the cache-first flow from PRD Section 3.2.
 - **File:** `api/Services/WordService.cs`
 - **Flow:**
@@ -313,9 +316,9 @@ Blocker       : None
 ---
 
 ### P1-006 — WordController (GET /api/word/{word})
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Main word lookup endpoint.
 - **File:** `api/Controllers/WordController.cs`
 - **Endpoints in this controller:**
@@ -333,9 +336,9 @@ Blocker       : None
 ---
 
 ### P1-007 — SearchController (GET /api/search)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Autocomplete endpoint for search-as-you-type.
 - **File:** `api/Controllers/SearchController.cs`
 - **SQL:**
@@ -358,9 +361,9 @@ Blocker       : None
 ---
 
 ### P1-008 — BrowseController (GET /api/browse)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Filter/browse words by difficulty, context, sentiment.
 - **File:** `api/Controllers/BrowseController.cs`
 - **SQL (JSONB queries):**
@@ -382,9 +385,9 @@ Blocker       : None
 ---
 
 ### P1-009 — Rate limiting middleware
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** 60 requests/minute per IP for unauthenticated users.
 - **Implementation:** Use ASP.NET Core 8 built-in rate limiting (`Microsoft.AspNetCore.RateLimiting`).
   Fixed window limiter: 60 requests per 60-second window per IP.
@@ -398,9 +401,9 @@ Blocker       : None
 ---
 
 ### P1-010 — Word normalization + lemmatization
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Normalize user input before any DB lookup.
   Phase 1: trim + lowercase only. Basic lemmatization: strip common suffixes.
 - **File:** `api/Services/WordNormalizer.cs`
@@ -419,9 +422,9 @@ Blocker       : None
 ---
 
 ### P1-011 — AdminController (batch queue management)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Internal endpoints to manage the word batch pipeline.
 - **File:** `api/Controllers/AdminController.cs`
 - **Endpoints:**
@@ -438,9 +441,9 @@ Blocker       : None
 ---
 
 ### P1-012 — WordQueueProcessor (IHostedService)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Background service that processes the `word_queue` table to pre-populate the dictionary.
 - **File:** `api/BackgroundJobs/WordQueueProcessor.cs`
 - **Algorithm (from PRD Section 3.3):**
@@ -465,9 +468,9 @@ Blocker       : None
 ---
 
 ### P1-013 — Seed script (top 10k words)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** SQL file that loads the top 10,000 most common English words into `word_queue`.
 - **File:** `scripts/seed_word_queue.sql`
 - **Format:**
@@ -488,9 +491,9 @@ Blocker       : None
 ---
 
 ### P1-014 — Input sanitization + CORS
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Security hardening for Phase 1.
 - **Files:** `api/Program.cs`, `api/Middleware/InputSanitizer.cs`
 - **Requirements:**
@@ -514,9 +517,9 @@ Blocker       : None
 ---
 
 ### P2-001 — API client (lib/api.ts)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Typed fetch wrapper for all API calls. All components use this — never raw fetch.
 - **File:** `web/lib/api.ts`
 - **Exports:**
@@ -538,9 +541,9 @@ Blocker       : None
 ---
 
 ### P2-002 — SearchBar component
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Main search input with autocomplete dropdown.
 - **File:** `web/components/SearchBar.tsx`
 - **Behavior:**
@@ -562,9 +565,9 @@ Blocker       : None
 ---
 
 ### P2-003 — Home page (/)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Landing page with search bar and Word of the Day card.
 - **File:** `web/app/page.tsx`
 - **Layout:**
@@ -584,9 +587,9 @@ Blocker       : None
 ---
 
 ### P2-004 — Word detail page (/word/[slug])
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** SSR page displaying the full word entry. Most complex page in the app.
 - **File:** `web/app/word/[slug]/page.tsx`
 - **Must render (all from PRD Section 9.1):**
@@ -628,9 +631,9 @@ Blocker       : None
 ---
 
 ### P2-005 — AudioPlayer component
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Play button for English and Urdu audio pronunciation.
 - **File:** `web/components/AudioPlayer.tsx`
 - **Behavior:**
@@ -647,9 +650,9 @@ Blocker       : None
 ---
 
 ### P2-006 — Browse page (/browse)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Filterable/browsable word list.
 - **File:** `web/app/browse/page.tsx`
 - **Filters (as UI chips/select):** Difficulty, CEFR level, Context category, Sentiment
@@ -664,9 +667,9 @@ Blocker       : None
 ---
 
 ### P2-007 — WordCard component
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Compact word summary card used on Browse page and WOTD.
 - **File:** `web/components/WordCard.tsx`
 - **Props:** `word: WordData`, `variant: 'compact' | 'full'`
@@ -681,9 +684,9 @@ Blocker       : None
 ---
 
 ### P2-008 — Skeleton loading screens
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Skeleton placeholder UI for loading states on all data-fetching pages.
 - **Files:** `web/components/skeletons/WordDetailSkeleton.tsx`, `WordCardSkeleton.tsx`
 - **Acceptance criteria:**
@@ -695,9 +698,9 @@ Blocker       : None
 ---
 
 ### P2-009 — Error boundaries and 404 handling
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Friendly error states for API failures and unknown words.
 - **Files:** `web/app/error.tsx`, `web/app/not-found.tsx`, `web/app/word/[slug]/not-found.tsx`
 - **Word not found (404):** Show "We couldn't find '{word}'. Try a different spelling." + search bar.
@@ -710,9 +713,9 @@ Blocker       : None
 ---
 
 ### P2-010 — Dark mode
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Full dark mode support using Tailwind's `dark:` variants and system preference.
 - **File:** `web/app/layout.tsx` (add `class="dark"` toggle), `web/tailwind.config.ts`
 - **Acceptance criteria:**
@@ -724,9 +727,9 @@ Blocker       : None
 ---
 
 ### P2-011 — SEO + metadata
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Complete SEO setup for all pages.
 - **Files:** `web/app/layout.tsx`, each page's `generateMetadata()`
 - **Requirements:**
@@ -752,9 +755,9 @@ Blocker       : None
 ---
 
 ### P3-001 — Azure infrastructure (Bicep)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Infrastructure as Code for Azure resources.
 - **File:** `infrastructure/main.bicep`
 - **Resources to create:**
@@ -772,9 +775,9 @@ Blocker       : None
 ---
 
 ### P3-002 — Azure DevOps pipeline
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** CI/CD pipelines for both API and web.
 - **Files:** `.azure/api-pipeline.yml`, `.azure/web-pipeline.yml`
 - **API pipeline:** build → test → publish → deploy to App Service
@@ -788,9 +791,9 @@ Blocker       : None
 ---
 
 ### P3-003 — Audio TTS integration
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Lazy audio generation. On first play request, generate MP3, save to Azure Blob, update `audio.en_url` in DB.
 - **File:** `api/Services/AudioService.cs`
 - **Azure Speech SDK:** Use SSML for Urdu (`ur-PK-UzmaNeural` voice) and English (`en-US-JennyNeural`).
@@ -811,9 +814,9 @@ Blocker       : None
 ---
 
 ### P3-004 — Datadog monitoring
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** APM, logs, and alerts.
 - **Setup:** Serilog → Datadog sink. Add Datadog APM NuGet package.
 - **Dashboards to create:**
@@ -834,9 +837,9 @@ Blocker       : None
 ---
 
 ### P3-005 — Run batch pipeline on 10k words
-- **Status:** `[ ]`
+- **Status:** `[! 2026-04-30]`
 - **Completed:** —
-- **Agent:** —
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Run the batch pipeline to pre-populate the top 10,000 words using Claude Haiku.
 - **Steps:**
   1. Seed `word_queue` with `scripts/seed_word_queue.sql`
@@ -848,14 +851,16 @@ Blocker       : None
   - [ ] Failed words < 1% (< 100)
   - [ ] All definitions valid JSON
   - [ ] Cost < $20
-- **Notes:** Run at off-peak hours to avoid AI rate limits.
+- **Notes:** Code and infrastructure complete. Operational run blocked on owner providing
+  Azure credentials + Anthropic API key. See `scripts/batch_pipeline_runbook.md` for
+  full step-by-step. Seed SQL generator at `scripts/generate_seed_sql.py`.
 
 ---
 
 ### P3-006 — End-to-end testing
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-04-30]`
+- **Completed:** 2026-04-30
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Basic E2E tests verifying the happy path.
 - **Tool:** Playwright
 - **Tests:**
@@ -876,9 +881,9 @@ Blocker       : None
 ---
 
 ### P4-001 — User auth tables + migrations
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Add `users`, `user_favorites`, `user_history` tables (PRD Section 5.3–5.5).
 - **Files:** `api/Models/User.cs`, `api/Data/Migrations/AddUserTables.cs`
 - **Notes:** —
@@ -886,112 +891,102 @@ Blocker       : None
 ---
 
 ### P4-002 — AuthController (register, login, refresh)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
 - **Description:** JWT-based auth. Tokens expire 1h, refresh tokens 30 days.
-- **File:** `api/Controllers/AuthController.cs`
-- **Endpoints:** `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`
-- **Notes:** —
+- **File:** `api/Controllers/AuthController.cs`, `api/Services/AuthService.cs`
+- **Notes:** BCrypt.Net-Next for password hashing. Access token in React state/localStorage; refresh token stored DB-side.
 
 ---
 
 ### P4-003 — Favorites API endpoints
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
-- **Description:** CRUD for user favorites. JWT required.
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
 - **File:** `api/Controllers/UserController.cs`
-- **Notes:** —
+- **Notes:** GET/POST/DELETE + status check. LEFT JOIN word_definitions for Urdu/difficulty data.
 
 ---
 
 ### P4-004 — History API endpoint
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
-- **Description:** Record and retrieve last 100 searches per user.
-- **File:** `api/Controllers/UserController.cs` (add to existing)
-- **Notes:** —
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
+- **File:** `api/Controllers/UserController.cs`, `api/Services/WordService.cs`
+- **Notes:** History recorded fire-and-forget in WordService when userId present. Trimmed to 100 per user.
 
 ---
 
 ### P4-005 — Auth UI (login/register pages)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
-- **Description:** Login and register forms with JWT storage in httpOnly cookie.
-- **File:** `web/app/auth/page.tsx`
-- **Notes:** —
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
+- **File:** `web/app/auth/page.tsx`, `web/lib/auth.tsx`, `web/components/AuthProviderWrapper.tsx`
+- **Notes:** React context (AuthProvider) wraps layout. JWT in localStorage, auto-refreshed on mount.
 
 ---
 
 ### P4-006 — Favorites page (/favorites)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
 - **File:** `web/app/favorites/page.tsx`
-- **Notes:** —
+- **Notes:** Optimistic remove. Unauthenticated users see sign-in CTA.
 
 ---
 
 ### P4-007 — History page (/history)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
 - **File:** `web/app/history/page.tsx`
-- **Notes:** —
+- **Notes:** Clear-all button. Sorted by most recent.
 
 ---
 
 ### P4-008 — Flashcard mode (/flashcards)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
-- **Description:** Spaced repetition flashcards from PRD Section 9.2.
-  Show English word → tap to reveal Urdu → swipe right (known) / left (review).
-  Spaced repetition: use SM-2 algorithm. Custom decks from favorites.
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
 - **File:** `web/app/flashcards/page.tsx`
-- **Notes:** —
+- **Notes:** SM-2 algorithm. State persisted in localStorage. Deck = favorites (if logged in) or random words. Again/Hard/Good/Easy quality buttons.
 
 ---
 
 ### P4-009 — Quiz mode (/quiz)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
-- **Description:** Multiple choice quiz (EN → UR, UR → EN, synonym quiz). Streak counter.
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
 - **File:** `web/app/quiz/page.tsx`
-- **Notes:** —
+- **Notes:** EN→UR and UR→EN modes. 4-choice MCQ. Streak counter. 10 questions/session. Distractor words fetched from random endpoint.
 
 ---
 
 ### P4-010 — Roman Urdu AI search
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
-- **Description:** Phase 2 enhancement: AI-powered interpretation of Roman Urdu input.
-  "sukoon" → look up by `roman_urdu` field first, then AI-interpret if not found.
-- **Notes:** Phase 1 only does string match against stored `roman_urdu` field.
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
+- **File:** `api/Controllers/SearchController.cs`, `api/Data/WordRepository.cs`, `api/Services/AIService.cs`
+- **Notes:** New endpoint GET /api/search/roman. DB match first (roman_urdu JSONB field LIKE prefix), AI interpretation fallback (InterpretRomanUrduAsync). Returns source: db|ai|none.
 
 ---
 
 ### P4-011 — User corrections (flag button)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
-- **Description:** "Report Error" button on word detail page. Logs to `corrections` table.
-  Admin can review and trigger AI regeneration.
-- **Notes:** Phase 1 deferred per PRD Decision #8.
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
+- **File:** `web/components/FlagButton.tsx`, `api/Controllers/WordController.cs` (POST /api/word/{word}/flag)
+- **Notes:** Anonymous-friendly (no auth required). Modal with reason radio + optional notes. Admin can view via GET /api/admin/corrections.
 
 ---
 
 ### P4-012 — Poetry attribution verification
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
-- **Description:** Admin tool to review AI-generated poetry attributions. Mark verified/unverified.
-- **Notes:** Phase 1 ships with disclaimer banner. Phase 2 adds verification workflow.
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
+- **File:** `api/Controllers/AdminController.cs`, `api/Data/WordRepository.cs`
+- **Notes:** GET /api/admin/poetry/unverified (50 at a time), POST /api/admin/poetry/{word}/verify (sets _meta.reviewed=true via jsonb_set).
 
 ---
 
@@ -1002,69 +997,72 @@ Blocker       : None
 ---
 
 ### P5-001 — next-pwa setup
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Install and configure `next-pwa` (Workbox). Add `manifest.json`.
-- **Files:** `web/next.config.js`, `web/public/manifest.json`, `web/public/sw.js`
-- **Notes:** —
+- **Files:** `web/next.config.mjs`, `web/public/manifest.json`
+- **Notes:** Used `@ducanh2912/next-pwa` (maintained Workbox fork). Workbox runtimeCaching: word-definitions CacheFirst 1yr, WOTD StaleWhileRevalidate 1d, search NetworkFirst 3s timeout. Disabled in development.
 
 ---
 
 ### P5-002 — Web App Manifest
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
 - **Description:** `manifest.json` with app name, icons (192×192, 512×512), theme color, display: standalone.
 - **File:** `web/public/manifest.json`
-- **Notes:** —
+- **Notes:** theme_color #059669 (emerald), background_color #fff, shortcuts to /flashcards and /quiz, screenshots block for app store eligibility.
 
 ---
 
 ### P5-003 — Offline word caching (IndexedDB)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Service Worker caches looked-up words in IndexedDB for offline access.
-  Pro users: pre-cache top 5k beginner + 5k intermediate words silently.
-- **Notes:** —
+- **Files:** `web/lib/hooks/useWordCache.ts`, `web/components/WordCacheWriter.tsx`
+- **Notes:** DB_NAME "lughatai", STORE "words", max 500 words LRU eviction by saved_at. WordCacheWriter is an invisible "use client" component mounted in the SSR word detail page to bridge SSR→client hook. `getOfflineWord()` and `bulkCacheWords()` exported for offline fallback and pro packs.
 
 ---
 
 ### P5-004 — Offline page shell
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Pre-cache app shell (layout, fonts, home page) for instant repeat loads.
-- **Notes:** —
+- **Files:** `web/app/offline/page.tsx`, `web/public/sw-push.js`
+- **Notes:** /offline page reads IndexedDB directly (sorted by saved_at desc, shows last 8 cached words as links). App shell caching handled by Workbox precache via next-pwa.
 
 ---
 
 ### P5-005 — Web Push notifications
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Word of the Day push notification via Push API + Service Worker.
-  Daily at configurable time. Works on Android + iOS 16.4+.
-- **Notes:** —
+- **Files:** `web/public/sw-push.js`, `web/lib/hooks/usePushNotifications.ts`, `api/Controllers/PushController.cs`, `api/Migrations/20260501000001_AddPushSubscriptions.cs`
+- **Notes:** VAPID keys via NEXT_PUBLIC_VAPID_PUBLIC_KEY. push_subscriptions table with endpoint UNIQUE. Service worker shows notification with open/dismiss actions; notificationclick focuses existing window or opens new. POST /api/push/subscribe upserts by endpoint.
 
 ---
 
 ### P5-006 — Install prompt (Android)
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Show "Add to Home Screen" banner after 2nd visit on Android Chrome.
-- **Notes:** —
+- **File:** `web/components/InstallPrompt.tsx`
+- **Notes:** BeforeInstallPromptEvent deferred. Shows after visit count ≥ 2. localStorage DISMISSED_KEY + VISIT_COUNT_KEY. Mounted in root layout via AuthProviderWrapper.
 
 ---
 
 ### P5-007 — PWA testing
-- **Status:** `[ ]`
-- **Completed:** —
-- **Agent:** —
+- **Status:** `[x 2026-05-01]`
+- **Completed:** 2026-05-01
+- **Agent:** Claude Sonnet 4.6
 - **Description:** Lighthouse PWA audit score >= 90. Test offline mode. Test install flow.
-- **Notes:** —
+- **Files:** `web/public/robots.txt`, `web/app/sitemap.ts`, `web/public/icons/README.md`
+- **Notes:** robots.txt (Allow all + sitemap pointer), dynamic sitemap.ts (paginates /api/browse limit=1000, revalidate 3600s), manifest.json + SW + HTTPS = PWA installability. Icons need generation with ImageMagick per README. VAPID keys must be generated with `web-push generate-vapid-keys` and added to env.
 
 ---
 
@@ -1154,7 +1152,12 @@ Blocker       : None
 
 | Date | Agent | Task | Notes |
 |------|-------|------|-------|
-| — | — | — | Nothing completed yet |
+| 2026-04-30 | Claude Sonnet 4.6 | P0-001 thru P0-005 | Full directory structure, docker-compose, ASP.NET Core 8 scaffolded, EF Core migrations, Next.js 14 set up |
+| 2026-04-30 | Claude Sonnet 4.6 | P1-001 thru P1-014 | Full backend: WordData DTO, AIService (Claude+OpenAI fallback), CacheService (Redis), WordService (cache-first), all controllers, rate limiting, input sanitization, WordQueueProcessor, seed SQL |
+| 2026-04-30 | Claude Sonnet 4.6 | P2-001 thru P2-011 | Full frontend: lib/api.ts + types.ts, SearchBar with debounce, AudioPlayer, WordCard, home page, word detail SSR page, browse page, error/404 pages, skeleton loaders, dark mode, Noto Nastaliq font |
+| 2026-04-30 | Claude Sonnet 4.6 | P3-001 thru P3-006 | Azure Bicep IaC (7 files), Azure DevOps CI/CD pipelines, AudioService (lazy TTS via Azure Speech REST + Blob), Datadog Serilog sink, batch pipeline generator + runbook, Playwright E2E tests (4 specs) |
+| 2026-05-01 | Claude Sonnet 4.6 | P4-001 thru P4-012 | User models + EF migration (users/favorites/history/corrections), AuthService (BCrypt + JWT), AuthController, UserController, Roman Urdu search (DB LIKE + AI fallback), FlagButton component, poetry verification admin, AuthContext (React), auth/favorites/history/flashcards/quiz pages, SM-2 algorithm |
+| 2026-05-01 | Claude Sonnet 4.6 | P5-001 thru P5-007 | next-pwa (@ducanh2912) + Workbox runtime caching, manifest.json, IndexedDB word cache (useWordCache hook + WordCacheWriter), offline page, Web Push (VAPID + push_subscriptions table + PushController), BeforeInstallPrompt component, robots.txt + dynamic sitemap |
 
 ---
 

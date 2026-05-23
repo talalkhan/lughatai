@@ -1,0 +1,6 @@
+@LughatAI.Api_HostAddress = http://localhost:5291
+
+GET {{LughatAI.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

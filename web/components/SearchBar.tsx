@@ -1,0 +1,172 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { searchWords } from "@/lib/api";
+import { SearchResult } from "@/lib/types";
+
+function DifficultyBadge({ difficulty }: { difficulty?: string }) {
+  const colors: Record<string, string> = {
+    beginner: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    intermediate: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    advanced: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+    expert: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+  };
+  if (!difficulty) return null;
+  return (
+    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${colors[difficulty] ?? "bg-gray-100 text-gray-700"}`}>
+      {difficulty}
+    </span>
+  );
+}
+
+export default function SearchBar({ autoFocus = false }: { autoFocus?: boolean }) {
+  const router = useRouter();
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(-1);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (query.length < 2) {
+      setResults([]);
+      setOpen(false);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const data = await searchWords(query);
+        setResults(data);
+        setOpen(true);
+        setHighlighted(-1);
+      } catch {
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [query]);
+
+  function navigate(word: string) {
+    setOpen(false);
+    setQuery("");
+    router.push(`/word/${encodeURIComponent(word.toLowerCase())}`);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (!open) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlighted((h) => Math.min(h + 1, results.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlighted((h) => Math.max(h - 1, -1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (highlighted >= 0 && results[highlighted]) {
+        navigate(results[highlighted].word);
+      } else if (query.trim().length >= 2) {
+        navigate(query.trim());
+      }
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (query.trim().length >= 2) navigate(query.trim());
+  }
+
+  return (
+    <div className="relative w-full max-w-2xl mx-auto">
+      <form onSubmit={handleSubmit} role="search">
+        <div className="relative flex items-center">
+          <input
+            ref={inputRef}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={() => results.length > 0 && setOpen(true)}
+            onBlur={() => setTimeout(() => setOpen(false), 150)}
+            placeholder="Search any English word…"
+            aria-label="Search for a word"
+            aria-autocomplete="list"
+            className="w-full px-5 py-4 text-base rounded-2xl border-2 border-gray-200 dark:border-gray-700
+                       bg-white dark:bg-gray-900 focus:outline-none focus:border-indigo-500
+                       dark:focus:border-indigo-400 pr-24"
+            style={{ fontSize: "16px" }}
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => { setQuery(""); setResults([]); setOpen(false); inputRef.current?.focus(); }}
+              className="absolute right-16 p-2 text-gray-400 hover:text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
+              aria-label="Clear search"
+            >
+              ✕
+            </button>
+          )}
+          <button
+            type="submit"
+            className="absolute right-2 px-4 py-2 min-h-[44px] min-w-[44px] bg-indigo-600 hover:bg-indigo-700
+                       text-white rounded-xl text-sm font-medium transition-colors"
+            aria-label="Search"
+          >
+            {loading ? (
+              <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              "→"
+            )}
+          </button>
+        </div>
+      </form>
+
+      {open && results.length > 0 && (
+        <ul
+          role="listbox"
+          className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-900 border border-gray-200
+                     dark:border-gray-700 rounded-2xl shadow-xl overflow-hidden"
+        >
+          {results.map((r, i) => (
+            <li
+              key={r.word}
+              role="option"
+              aria-selected={highlighted === i}
+              onMouseEnter={() => setHighlighted(i)}
+              onMouseDown={() => navigate(r.word)}
+              className={`flex items-center justify-between px-5 py-3 cursor-pointer transition-colors
+                ${highlighted === i ? "bg-indigo-50 dark:bg-indigo-950" : "hover:bg-gray-50 dark:hover:bg-gray-800"}`}
+            >
+              <div className="flex items-center gap-3">
+                <span className="font-medium text-gray-900 dark:text-gray-100">{r.word}</span>
+                {r.urdu && (
+                  <span dir="rtl" lang="ur" className="font-nastaliq text-lg text-gray-600 dark:text-gray-400">
+                    {r.urdu}
+                  </span>
+                )}
+              </div>
+              <DifficultyBadge difficulty={r.difficulty} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

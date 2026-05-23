@@ -1,0 +1,41 @@
+@description('Azure region')
+param location string
+
+@description('Storage account name (3-24 chars, lowercase alphanumeric only)')
+param storageAccountName string
+
+// ── Storage Account ────────────────────────────────────────────────────────
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
+  name: storageAccountName
+  location: location
+  sku: {
+    name: 'Standard_LRS'
+  }
+  kind: 'StorageV2'
+  properties: {
+    accessTier: 'Hot'
+    allowBlobPublicAccess: true // audio files are public
+    minimumTlsVersion: 'TLS1_2'
+    supportsHttpsTrafficOnly: true
+  }
+}
+
+// ── Blob Service ───────────────────────────────────────────────────────────
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
+  name: 'default'
+  parent: storageAccount
+}
+
+// ── Audio Container (public blob access) ──────────────────────────────────
+resource audioContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  name: 'audio'
+  parent: blobService
+  properties: {
+    publicAccess: 'Blob'
+  }
+}
+
+// ── Outputs ────────────────────────────────────────────────────────────────
+output connectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
+output blobHostName string = '${storageAccountName}.blob.core.windows.net'
+output blobEndpoint string = storageAccount.properties.primaryEndpoints.blob
