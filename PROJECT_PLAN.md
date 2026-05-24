@@ -8,11 +8,11 @@
 ## Current Status
 
 ```
-Last updated  : 2026-05-23
-Updated by    : Claude Sonnet 4.6
+Last updated  : 2026-05-24
+Updated by    : Codex (GPT-5)
 Active phase  : Data pipeline hardening
-Current task  : Root-caused enrichment never triggering — API was running stale DLL; fix is API restart
-Next task     : Restart API, verify auscultation enriches end-to-end, then submit full P3 OpenAI batches
+Current task  : Align Azure IaC for Pakistan-first deployment defaults
+Next task     : Validate Bicep deploy path for `uaenorth`, then wire Front Door custom domain/DNS
 ```
 
 ### Batch Pipeline State (2026-05-23)
@@ -29,6 +29,8 @@ Next task     : Restart API, verify auscultation enriches end-to-end, then submi
 - **Backups are now sharded** as `data/word_definitions_backup.partNNN.sql.gz` to stay under GitHub's file limit
 - **2026-05-23 canary retest passed after fixes:** replayed 20/20 core rows inserted cleanly, stage stored as `core`, enrichment-only fields nulled in DB
 - **2026-05-23 enrichment flow debugged:** `WordData.MetaInfo.Stage` property added by Codex was not in the running API DLL (API started before the code change); enrichment never triggered because `NeedsEnrichment()` always saw `Stage=null`. Fix: restart API with `dotnet run`. Test word: `auscultation` (in DB as core, not in Redis).
+- **2026-05-24 Azure IaC updated for Pakistan-first rollout:** default region changed to `uaenorth`, and the retired classic CDN module was replaced with Azure Front Door Standard for `/audio/*` delivery. Storage now provisions a dedicated `frontdoor-health` container for anonymous Front Door origin probes.
+- **2026-05-24 Azure IaC cleanup verified:** Bicep warnings removed, `az bicep build --file infrastructure/main.bicep` is clean, and Azure `what-if` still succeeds against `lughatai-prod-rg` in `uaenorth`.
 
 ### At-a-Glance Progress
 

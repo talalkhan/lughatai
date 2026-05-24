@@ -76,9 +76,9 @@ module speech 'modules/speech.bicep' = {
 }
 
 module cdn 'modules/cdn.bicep' = {
-  name: 'cdn'
+  name: 'edge'
   params: {
-    profileName: '${resourcePrefix}-cdn'
+    profileName: '${resourcePrefix}-fd'
     endpointName: '${resourcePrefix}-audio'
     storageHostName: storage.outputs.blobHostName
   }
@@ -102,7 +102,6 @@ module appService 'modules/appservice.bicep' = {
     adminApiKey: adminApiKey
     datadogApiKey: datadogApiKey
   }
-  dependsOn: [database, redis, storage, speech, cdn]
 }
 
 // ── Outputs ────────────────────────────────────────────────────────────────

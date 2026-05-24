@@ -58,4 +58,5 @@ resource allowAzureServices 'Microsoft.DBforPostgreSQL/flexibleServers/firewallR
 
 // ── Outputs ────────────────────────────────────────────────────────────────
 output serverFqdn string = server.properties.fullyQualifiedDomainName
+@secure()
 output connectionString string = 'Host=${server.properties.fullyQualifiedDomainName};Port=5432;Database=lughatai;Username=${adminUser};Password=${adminPassword};SSL Mode=Require;Trust Server Certificate=true'

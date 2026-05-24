@@ -21,5 +21,6 @@ resource speechService 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
 }
 
 // ── Outputs ────────────────────────────────────────────────────────────────
+@secure()
 output key string = speechService.listKeys().key1
 output endpoint string = speechService.properties.endpoint

@@ -1,14 +1,14 @@
 using './main.bicep'
 
 // ── Deploy command ─────────────────────────────────────────────────────────
-// az group create --name lughatai-prod-rg --location eastus
+// az group create --name lughatai-prod-rg --location uaenorth
 // az deployment group create \
 //   --resource-group lughatai-prod-rg \
 //   --template-file main.bicep \
 //   --parameters parameters.bicepparam
 
 param environment = 'prod'
-param location = 'eastus'
+param location = 'uaenorth'
 param prefix = 'lughatai'
 param dbAdminUser = 'lughatadmin'
 

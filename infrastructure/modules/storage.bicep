@@ -35,7 +35,17 @@ resource audioContainer 'Microsoft.Storage/storageAccounts/blobServices/containe
   }
 }
 
+// A public container gives Front Door a stable anonymous HEAD probe target.
+resource frontDoorHealthContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-01-01' = {
+  name: 'frontdoor-health'
+  parent: blobService
+  properties: {
+    publicAccess: 'Container'
+  }
+}
+
 // ── Outputs ────────────────────────────────────────────────────────────────
-output connectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
-output blobHostName string = '${storageAccountName}.blob.core.windows.net'
+@secure()
+output connectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccountName};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
+output blobHostName string = '${storageAccountName}.blob.${environment().suffixes.storage}'
 output blobEndpoint string = storageAccount.properties.primaryEndpoints.blob

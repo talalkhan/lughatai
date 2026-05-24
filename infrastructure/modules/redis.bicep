@@ -25,4 +25,5 @@ resource redis 'Microsoft.Cache/redis@2023-08-01' = {
 // ── Outputs ────────────────────────────────────────────────────────────────
 output hostName string = redis.properties.hostName
 output sslPort int = redis.properties.sslPort
+@secure()
 output connectionString string = '${redis.properties.hostName}:${redis.properties.sslPort},password=${redis.listKeys().primaryKey},ssl=True,abortConnect=False'
