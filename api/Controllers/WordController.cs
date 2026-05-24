@@ -91,6 +91,7 @@ public class WordController : ControllerBase
         var allowed = new[] { "translation", "example", "poetry", "other" };
         if (!allowed.Contains(req.Reason)) return BadRequest(new { error = "Invalid reason" });
         if (string.IsNullOrWhiteSpace(word) || word.Length > 150) return BadRequest(new { error = "Invalid word" });
+        if (req.Notes?.Length > 500) return BadRequest(new { error = "Notes must be 500 characters or fewer" });
 
         int? userId = null;
         var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);

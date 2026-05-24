@@ -220,9 +220,20 @@ public class WordRepository : IWordRepository
     public async Task AddCorrectionAsync(string word, int? userId, string reason, string? notes)
     {
         using var conn = Connection();
+        var normalizedWord = word.ToLowerInvariant();
+
+        // Skip duplicate: same word + reason already open within the last 24 hours
+        // (for logged-in users, scoped to their userId; for anonymous, scoped globally)
+        var duplicateCheck = userId.HasValue
+            ? "SELECT 1 FROM corrections WHERE word = @word AND reason = @reason AND user_id = @userId AND status = 'open' AND created_at > NOW() - INTERVAL '24 hours'"
+            : "SELECT 1 FROM corrections WHERE word = @word AND reason = @reason AND user_id IS NULL AND status = 'open' AND created_at > NOW() - INTERVAL '24 hours'";
+
+        var exists = await conn.ExecuteScalarAsync<int?>(duplicateCheck, new { word = normalizedWord, reason, userId });
+        if (exists.HasValue) return;
+
         await conn.ExecuteAsync(
             "INSERT INTO corrections (word, user_id, reason, notes) VALUES (@word, @userId, @reason, @notes)",
-            new { word = word.ToLowerInvariant(), userId, reason, notes });
+            new { word = normalizedWord, userId, reason, notes });
     }
 
     public async Task<IEnumerable<dynamic>> GetOpenCorrectionsAsync()
