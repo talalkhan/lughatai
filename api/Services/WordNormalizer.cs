@@ -39,25 +39,12 @@ public class WordNormalizer : IWordNormalizer
         normalized = AllowedChars.Replace(normalized, "");
         normalized = normalized.Trim();
 
+        // Only map explicitly known inflections — suffix stripping was removed
+        // because it incorrectly mutilated adjectives/nouns ending in -ous, -us,
+        // -is, -ness, etc. (e.g. "capacious" → "capaciou"). The Lemmas table
+        // covers the common verb forms that actually matter.
         if (Lemmas.TryGetValue(normalized, out var lemma))
             return lemma;
-
-        // Basic suffix stripping for plurals
-        if (normalized.Length > 4 && normalized.EndsWith("ing"))
-        {
-            var stem = normalized[..^3];
-            if (stem.Length >= 3) return stem;
-        }
-        if (normalized.Length > 3 && normalized.EndsWith("es") && !normalized.EndsWith("ies"))
-        {
-            var stem = normalized[..^2];
-            if (stem.Length >= 3) return stem;
-        }
-        if (normalized.Length > 3 && normalized.EndsWith("s") && !normalized.EndsWith("ss"))
-        {
-            var stem = normalized[..^1];
-            if (stem.Length >= 3) return stem;
-        }
 
         return normalized;
     }
