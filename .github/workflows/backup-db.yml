@@ -1,0 +1,90 @@
+name: Backup Database to Azure Blob Storage
+
+on:
+  schedule:
+    - cron: "0 2 * * 0" # Every Sunday at 2am UTC
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_BACKUP_CREDENTIALS }}
+
+      - name: Open firewall for runner
+        run: |
+          RUNNER_IP=$(curl -s https://ifconfig.me)
+          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+          az postgres flexible-server firewall-rule create \
+            --resource-group lughatai-beta-rg \
+            --name lughatai-beta-db \
+            --rule-name AllowGHBackup \
+            --start-ip-address "$RUNNER_IP" \
+            --end-ip-address "$RUNNER_IP" \
+            --output none
+
+      - name: Install postgresql-client
+        run: sudo apt-get install -y postgresql-client --quiet
+
+      - name: pg_dump → gzip → Azure Blob
+        env:
+          PGPASSWORD: ${{ secrets.AZURE_DB_PASSWORD }}
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          BLOB_NAME="word_definitions_${DATE}.sql.gz"
+          BACKUP_FILE="/tmp/${BLOB_NAME}"
+
+          echo "Dumping database..."
+          pg_dump \
+            "host=lughatai-beta-db.postgres.database.azure.com port=5432 dbname=lughatai user=lughatadmin sslmode=require" \
+            --data-only --table=word_definitions --no-acl --no-owner \
+            | gzip > "$BACKUP_FILE"
+
+          SIZE=$(du -sh "$BACKUP_FILE" | cut -f1)
+          echo "Dump size: $SIZE"
+
+          echo "Uploading to Azure Blob Storage..."
+          az storage blob upload \
+            --account-name lughataibetastorage \
+            --container-name db-backups \
+            --name "$BLOB_NAME" \
+            --file "$BACKUP_FILE" \
+            --auth-mode login \
+            --overwrite \
+            --output none
+
+          echo "✅ Backup complete: $BLOB_NAME ($SIZE)"
+          rm "$BACKUP_FILE"
+
+      - name: Prune backups older than 12 weeks
+        run: |
+          CUTOFF=$(date -d "84 days ago" +%Y-%m-%d)
+          echo "Pruning backups older than $CUTOFF..."
+          az storage blob list \
+            --account-name lughataibetastorage \
+            --container-name db-backups \
+            --auth-mode login \
+            --query "[?name < 'word_definitions_${CUTOFF}'].name" \
+            --output tsv | while read -r blob; do
+              echo "  Deleting: $blob"
+              az storage blob delete \
+                --account-name lughataibetastorage \
+                --container-name db-backups \
+                --name "$blob" \
+                --auth-mode login \
+                --output none
+            done
+          echo "Pruning done."
+
+      - name: Remove firewall rule
+        if: always()
+        run: |
+          az postgres flexible-server firewall-rule delete \
+            --resource-group lughatai-beta-rg \
+            --name lughatai-beta-db \
+            --rule-name AllowGHBackup \
+            --yes --output none 2>/dev/null || true
