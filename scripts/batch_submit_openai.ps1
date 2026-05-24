@@ -168,8 +168,8 @@ $reqPrefix = "{`"custom_id`":`""
 $reqMiddleTemplate  = "`",`"method`":`"POST`",`"url`":`"/v1/chat/completions`",`"body`":{`"model`":`"$Model`",`"max_tokens`":$MaxTokens,`"messages`":[{`"role`":`"system`",`"content`":`"{0}`"},{`"role`":`"user`",`"content`":`""
 $reqSuffix  = "`"}]}}"
 $reqMiddleByStage = @{
-    enriched = [string]::Format($reqMiddleTemplate, $fullPromptEscaped)
-    core     = [string]::Format($reqMiddleTemplate, $corePromptEscaped)
+    enriched = $reqMiddleTemplate.Replace("{0}", $fullPromptEscaped)
+    core     = $reqMiddleTemplate.Replace("{0}", $corePromptEscaped)
 }
 
 # Split words into batches
