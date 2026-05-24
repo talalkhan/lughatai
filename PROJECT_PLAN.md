@@ -9,10 +9,10 @@
 
 ```
 Last updated  : 2026-05-23
-Updated by    : Codex GPT-5
+Updated by    : Claude Sonnet 4.6
 Active phase  : Data pipeline hardening
-Current task  : Canary follow-up fixes complete — collector resets parse failures, validates queued headwords, and enforces lean stored core rows
-Next task     : Resume P3 OpenAI batches and monitor the next live collect under the hardened core-mode flow
+Current task  : Root-caused enrichment never triggering — API was running stale DLL; fix is API restart
+Next task     : Restart API, verify auscultation enriches end-to-end, then submit full P3 OpenAI batches
 ```
 
 ### Batch Pipeline State (2026-05-23)
@@ -28,6 +28,7 @@ Next task     : Resume P3 OpenAI batches and monitor the next live collect under
 - **Core hits now self-enrich in the background** after a real user lookup
 - **Backups are now sharded** as `data/word_definitions_backup.partNNN.sql.gz` to stay under GitHub's file limit
 - **2026-05-23 canary retest passed after fixes:** replayed 20/20 core rows inserted cleanly, stage stored as `core`, enrichment-only fields nulled in DB
+- **2026-05-23 enrichment flow debugged:** `WordData.MetaInfo.Stage` property added by Codex was not in the running API DLL (API started before the code change); enrichment never triggered because `NeedsEnrichment()` always saw `Stage=null`. Fix: restart API with `dotnet run`. Test word: `auscultation` (in DB as core, not in Redis).
 
 ### At-a-Glance Progress
 
