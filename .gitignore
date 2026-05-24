@@ -36,10 +36,11 @@ Thumbs.db
 .idea/
 .vscode/settings.json
 
-# Database backups — these SHOULD be committed (they are your safety net)
-# data/word_definitions_backup.sql is intentionally tracked by git
-# Only exclude temp/partial files
+# Database backups — the compressed .sql.gz IS committed (your safety net)
+# The uncompressed .sql is too large for GitHub (>100 MB) — always use .sql.gz
+data/*.sql
 data/*.tmp
+scripts/data/
 
 # Azure / Terraform
 .terraform/

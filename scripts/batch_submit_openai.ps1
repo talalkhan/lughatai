@@ -105,10 +105,10 @@ Write-Info "Per batch file: $RequestsPerBatch words"
 Write-H "Step 1/5: Fetching pending words"
 
 $priorityFilter = if ($MaxPriority -gt 0) { " AND priority <= $MaxPriority" } else { "" }
-$sql = "SELECT id, word FROM word_queue WHERE status='pending'$priorityFilter ORDER BY priority ASC, id ASC"
-if ($LimitWords -gt 0) {
-    $sql = "SELECT id, word FROM word_queue WHERE status='pending'$priorityFilter ORDER BY priority ASC, id ASC LIMIT $LimitWords"
-}
+# Always cap the fetch to avoid piping huge result sets through Docker.
+# Default cap = enough words for all batches we'll submit this run.
+$fetchLimit = if ($LimitWords -gt 0) { $LimitWords } else { $RequestsPerBatch }
+$sql = "SELECT id, word FROM word_queue WHERE status='pending'$priorityFilter ORDER BY priority ASC, id ASC LIMIT $fetchLimit"
 if ($MaxPriority -gt 0) { Write-Info "Priority filter: P1 to P$MaxPriority only" }
 
 Write-Info "Querying word_queue..."

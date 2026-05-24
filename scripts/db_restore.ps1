@@ -18,7 +18,9 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$BackupFile = "data\word_definitions_backup.sql"
+$RepoRoot   = Split-Path $PSScriptRoot -Parent
+$BackupFile = Join-Path $RepoRoot "data\word_definitions_backup.sql.gz"
+Add-Type -AssemblyName "System.IO.Compression"
 
 Write-Host ""
 Write-Host "LughatAI — Database Restore" -ForegroundColor Cyan
@@ -74,8 +76,14 @@ if ([int]$existing -gt 0) {
 # ── 4. Run the restore ────────────────────────────────────────────────────────
 Write-Host "Restoring from $BackupFile..." -ForegroundColor Gray
 
-Get-Content $BackupFile -Encoding UTF8 -Raw | `
-    docker compose exec -T postgres psql -U postgres -d lughatai -q
+# Decompress .sql.gz then pipe into psql
+$fs     = [System.IO.File]::OpenRead($BackupFile)
+$gz     = [System.IO.Compression.GZipStream]::new($fs, [System.IO.Compression.CompressionMode]::Decompress)
+$reader = [System.IO.StreamReader]::new($gz, [System.Text.Encoding]::UTF8)
+$sql    = $reader.ReadToEnd()
+$reader.Close(); $gz.Close(); $fs.Close()
+
+$sql | docker compose exec -T postgres psql -U postgres -d lughatai -q
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Restore failed. Check the output above." -ForegroundColor Red

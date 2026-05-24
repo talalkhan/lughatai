@@ -12,7 +12,10 @@
 # =============================================================================
 
 $ErrorActionPreference = "Stop"
-$BackupFile = "data\word_definitions_backup.sql"
+# Always relative to repo root (parent of scripts/) regardless of where user runs from
+$RepoRoot  = Split-Path $PSScriptRoot -Parent
+$BackupFile = Join-Path $RepoRoot "data\word_definitions_backup.sql.gz"
+Add-Type -AssemblyName "System.IO.Compression"
 
 Write-Host ""
 Write-Host "LughatAI — Database Backup" -ForegroundColor Cyan
@@ -42,10 +45,12 @@ if ([int]$wordCount -eq 0) {
 # ── 3. Run pg_dump ───────────────────────────────────────────────────────────
 Write-Host "Running pg_dump..." -ForegroundColor Gray
 
-# Ensure data/ directory exists
-if (-not (Test-Path "data")) { New-Item -ItemType Directory -Path "data" | Out-Null }
+# Ensure data/ directory exists at repo root
+$dataDir = Join-Path $RepoRoot "data"
+if (-not (Test-Path $dataDir)) { New-Item -ItemType Directory -Path $dataDir | Out-Null }
 
-# Stream dump from inside the container, write as UTF-8 (required for Urdu text)
+# Stream dump from inside the container
+Write-Host "  Running pg_dump..." -ForegroundColor Gray
 $dumpContent = docker compose exec -T postgres pg_dump `
     -U postgres `
     -d lughatai `
@@ -60,27 +65,21 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# Write UTF-8 without BOM (important: Urdu Unicode must survive the round-trip)
-[System.IO.File]::WriteAllText(
-    (Join-Path (Get-Location) $BackupFile),
-    ($dumpContent -join "`n"),
-    [System.Text.UTF8Encoding]::new($false)  # $false = no BOM
-)
+# Compress with GZip — keeps file well under GitHub's 100 MB limit
+$sqlBytes = [System.Text.UTF8Encoding]::new($false).GetBytes($dumpContent -join "`n")
+$fs = [System.IO.File]::Create($BackupFile)
+$gz = [System.IO.Compression.GZipStream]::new($fs, [System.IO.Compression.CompressionLevel]::Optimal)
+$gz.Write($sqlBytes, 0, $sqlBytes.Length)
+$gz.Close(); $fs.Close()
 
-$fileSize = [math]::Round((Get-Item $BackupFile).Length / 1KB, 1)
-Write-Host "  Saved: $BackupFile ($wordCount words, ${fileSize} KB)" -ForegroundColor Green
+$fileSizeMb = [math]::Round((Get-Item $BackupFile).Length / 1MB, 1)
+Write-Host "  Saved: $BackupFile ($wordCount words, ${fileSizeMb} MB compressed)" -ForegroundColor Green
 Write-Host ""
 
-# ── 4. Warn if file is getting large ─────────────────────────────────────────
-if ($fileSize -gt 80000) {
-    Write-Host "WARNING: Backup file is >80 MB. GitHub has a 100 MB hard limit." -ForegroundColor Yellow
-    Write-Host "Consider using Git LFS: https://git-lfs.github.com" -ForegroundColor Yellow
-    Write-Host ""
-}
-
 # ── 5. Print git commands ─────────────────────────────────────────────────────
+$relPath = "data\word_definitions_backup.sql.gz"
 Write-Host "Push to GitHub:" -ForegroundColor Cyan
-Write-Host "  git add $BackupFile" -ForegroundColor White
+Write-Host "  git add $relPath" -ForegroundColor White
 Write-Host "  git commit -m `"backup: $wordCount words`"" -ForegroundColor White
 Write-Host "  git push" -ForegroundColor White
 Write-Host ""
