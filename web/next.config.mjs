@@ -1,4 +1,5 @@
 import withPWAInit from "@ducanh2912/next-pwa";
+import { setupDevPlatform } from "@cloudflare/next-on-pages/next-dev";
 
 const disablePwa =
   process.env.NODE_ENV === "development" ||
@@ -76,9 +77,16 @@ const withPWA = withPWAInit({
   },
 });
 
+// Enable Cloudflare bindings in local dev
+if (process.env.NODE_ENV === "development") {
+  await setupDevPlatform();
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    // Cloudflare handles image resizing; Next.js optimisation not supported on edge
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
