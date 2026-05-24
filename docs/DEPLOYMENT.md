@@ -22,8 +22,8 @@ All resources live in resource group **`lughatai-beta-rg`**, region **UAE North*
 | Resource | Type | Name | Notes |
 |----------|------|------|-------|
 | App Service Plan | B2 Basic (2 vCores, 3.5 GB RAM, Linux) | `lughatai-beta-plan` | Shared by API + frontend — $0 extra per app |
-| API Web App | App Service (Node.js → .NET 8) | `lughatai-beta-api` | ASP.NET Core 8, `WEBSITE_RUN_FROM_PACKAGE=1` |
-| Frontend Web App | App Service (Node.js 22) | `lughatai-beta-web` | Next.js 14, startup: `npm start`, port 3000 |
+| API Web App | App Service (Node.js → .NET 8) | `lughatai-beta-api` | ASP.NET Core 8, `WEBSITE_RUN_FROM_PACKAGE=1`, **Always On: enabled** |
+| Frontend Web App | App Service (Node.js 22) | `lughatai-beta-web` | Next.js 14, startup: `npm start`, port 3000, **Always On: enabled** |
 | PostgreSQL | Flexible Server B2s Burstable | `lughatai-beta-db` | v16, 32 GB storage, 7-day PITR backup |
 | Blob Storage | Standard LRS | `lughataibetastorage` | Audio files + DB backups |
 | Speech Services | S0 pay-per-use | `lughatai-beta-speech` | Azure TTS for Urdu/English pronunciation |
