@@ -81,7 +81,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const hideChrome = pathname === "/auth";
   const showHeaderSearch = !hideChrome && pathname !== "/";
-  const pagePadding = hideChrome ? "" : "pb-24 md:pb-0";
+  const pagePadding = hideChrome ? "" : "";
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(99,102,241,0.14),_transparent_30%),linear-gradient(180deg,_#ffffff_0%,_#f8fafc_52%,_#ffffff_100%)] dark:bg-[radial-gradient(circle_at_top,_rgba(79,70,229,0.2),_transparent_28%),linear-gradient(180deg,_#030712_0%,_#09111f_48%,_#030712_100%)]">
@@ -143,6 +143,34 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       <div className={pagePadding}>{children}</div>
+
+      {!hideChrome && (
+        <footer className="border-t border-gray-200/70 dark:border-gray-800/70 py-8 pb-28 md:pb-10">
+          <div className="mx-auto max-w-6xl px-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <p className="text-sm text-gray-400 dark:text-gray-500">
+                © {new Date().getFullYear()} ThetaFoundry LLC
+              </p>
+              <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                {[
+                  { href: "/about", label: "About" },
+                  { href: "/contact", label: "Contact" },
+                  { href: "/privacy", label: "Privacy" },
+                  { href: "/terms", label: "Terms" },
+                ].map(({ href, label }) => (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </nav>
+            </div>
+          </div>
+        </footer>
+      )}
 
       {!hideChrome && (
         <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200/80 bg-white/92 px-3 py-3 backdrop-blur-xl dark:border-gray-800/80 dark:bg-gray-950/92 lg:hidden">
