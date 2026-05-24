@@ -97,7 +97,9 @@ try
         .AddJwtBearer(options =>
         {
             var jwtConfig = builder.Configuration.GetSection("Jwt");
-            var secret = jwtConfig["Secret"] ?? throw new InvalidOperationException("JWT Secret not configured");
+            var secret = jwtConfig["Secret"];
+            if (string.IsNullOrWhiteSpace(secret))
+                throw new InvalidOperationException("Jwt:Secret is not configured. Set via environment variable Jwt__Secret.");
             var keyBytes = System.Text.Encoding.UTF8.GetBytes(secret);
             options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
             {
@@ -154,10 +156,21 @@ try
     app.MapControllers().RequireRateLimiting("ip");
     app.MapHealthChecks("/health").AllowAnonymous();
 
-    // Exclude admin from rate limiting
-    app.MapControllerRoute(
-        name: "admin",
-        pattern: "api/admin/{**slug}");
+    // Startup validation — catch misconfigured secrets before accepting traffic
+    if (!app.Environment.IsDevelopment())
+    {
+        var adminKey = app.Configuration["Admin:ApiKey"] ?? "";
+        if (string.IsNullOrWhiteSpace(adminKey))
+            throw new InvalidOperationException("Admin:ApiKey is not configured. Set via environment variable Admin__ApiKey.");
+
+        var corsOrigins = app.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+        if (corsOrigins.Any(o => o.Contains("localhost", StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException("Cors:AllowedOrigins contains localhost in a non-Development environment. Set production origins via Cors__AllowedOrigins__0.");
+
+        var allowedHosts = app.Configuration["AllowedHosts"] ?? "*";
+        if (allowedHosts == "*")
+            Log.Warning("AllowedHosts is '*' in production — set ASPNETCORE_AllowedHosts=urdumeaning.com;www.urdumeaning.com");
+    }
 
     app.Run();
 }

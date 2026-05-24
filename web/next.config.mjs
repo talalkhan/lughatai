@@ -78,7 +78,15 @@ const withPWA = withPWAInit({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Allow the app to be installed as PWA
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.blob.core.windows.net",
+        pathname: "/**",
+      },
+    ],
+  },
   headers: async () => [
     {
       source: "/sw.js",

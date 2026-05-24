@@ -46,7 +46,7 @@ public class CacheService : ICacheService
         {
             var db = _redis.GetDatabase();
             var json = JsonSerializer.Serialize(data, JsonOpts);
-            await db.StringSetAsync(CacheKey(word), json);
+            await db.StringSetAsync(CacheKey(word), json, TimeSpan.FromDays(7));
         }
         catch (Exception ex)
         {

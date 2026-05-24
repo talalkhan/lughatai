@@ -1,6 +1,7 @@
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using UrduMeaning.Api.Data;
+using UrduMeaning.Api.Services;
 
 namespace UrduMeaning.Api.Controllers;
 
@@ -9,11 +10,13 @@ namespace UrduMeaning.Api.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly IWordRepository _repo;
+    private readonly ICacheService _cache;
     private readonly IConfiguration _config;
 
-    public AdminController(IWordRepository repo, IConfiguration config)
+    public AdminController(IWordRepository repo, ICacheService cache, IConfiguration config)
     {
         _repo = repo;
+        _cache = cache;
         _config = config;
     }
 
@@ -45,7 +48,7 @@ public class AdminController : ControllerBase
         return Ok(new { message = "Failed words reset to pending" });
     }
 
-    // ── Corrections (P4-011) ─────────────────────────────────────────────────
+    // ── Corrections ──────────────────────────────────────────────────────────
 
     [HttpGet("corrections")]
     public async Task<IActionResult> GetCorrections()
@@ -59,7 +62,6 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> DismissCorrection(int id)
     {
         if (!IsAuthorized()) return Unauthorized(new { error = "Invalid admin key" });
-        // Update correction status to dismissed
         using var conn = new Npgsql.NpgsqlConnection(_config.GetConnectionString("Default"));
         await conn.ExecuteAsync(
             "UPDATE corrections SET status = 'dismissed' WHERE id = @id",
@@ -67,7 +69,7 @@ public class AdminController : ControllerBase
         return Ok();
     }
 
-    // ── Poetry verification (P4-012) ─────────────────────────────────────────
+    // ── Poetry verification ───────────────────────────────────────────────────
 
     [HttpGet("poetry/unverified")]
     public async Task<IActionResult> GetUnverifiedPoetry()
@@ -81,7 +83,9 @@ public class AdminController : ControllerBase
     public async Task<IActionResult> VerifyPoetry(string word)
     {
         if (!IsAuthorized()) return Unauthorized(new { error = "Invalid admin key" });
-        await _repo.MarkPoetryVerifiedAsync(word.Trim().ToLowerInvariant());
+        var normalized = word.Trim().ToLowerInvariant();
+        await _repo.MarkPoetryVerifiedAsync(normalized);
+        await _cache.InvalidateWordAsync(normalized);
         return Ok(new { verified = true });
     }
 

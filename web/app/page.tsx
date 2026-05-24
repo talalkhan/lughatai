@@ -17,9 +17,7 @@ import { WordData } from "@/lib/types";
 export const metadata: Metadata = {
   title: SITE_TITLE,
   description: SITE_DESCRIPTION,
-  alternates: {
-    canonical: "/",
-  },
+  alternates: { canonical: "/" },
   openGraph: {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
@@ -36,36 +34,29 @@ export const metadata: Metadata = {
 };
 
 const CATEGORIES = [
-  { label: "Religion", context: "religion", emoji: "🕌" },
-  { label: "Literature", context: "literature", emoji: "📚" },
-  { label: "Poetry", context: "poetry", emoji: "✍️" },
-  { label: "Business", context: "business", emoji: "💼" },
-  { label: "Science", context: "science", emoji: "🔬" },
-  { label: "Philosophy", context: "philosophy", emoji: "🧠" },
-  { label: "Medicine", context: "medicine", emoji: "🏥" },
-  { label: "Daily Life", context: "daily", emoji: "🌟" },
+  { label: "Daily Life", context: "daily" },
+  { label: "Literature", context: "literature" },
+  { label: "Poetry", context: "poetry" },
+  { label: "Business", context: "business" },
+  { label: "Science", context: "science" },
+  { label: "Religion", context: "religion" },
 ];
 
-const QUICK_LINKS = [
-  { label: "Browse Library", href: "/browse", tone: "bg-indigo-600 text-white hover:bg-indigo-700" },
-  { label: "Flashcards", href: "/flashcards", tone: "bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800" },
-  { label: "Quiz", href: "/quiz", tone: "bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800" },
-  { label: "Saved Words", href: "/favorites", tone: "bg-white text-gray-800 hover:bg-gray-100 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800" },
-];
+const SAMPLE_WORDS = ["mercy", "sustain", "eloquent", "justice"];
 
 async function WotdSection() {
   let word: WordData | null = null;
   try {
     word = await getWordOfTheDay();
   } catch {
-    // No words yet — section stays empty
+    // no words yet
   }
 
   if (!word) {
     return (
-      <div className="text-center py-8 text-gray-500 dark:text-gray-400 text-sm">
+      <p className="py-6 text-center text-sm text-gray-400 dark:text-gray-500">
         Word of the Day will appear once the dictionary has been populated.
-      </div>
+      </p>
     );
   }
 
@@ -90,11 +81,7 @@ export default function HomePage() {
       applicationCategory: "ReferenceApplication",
       operatingSystem: "Any",
       description: SITE_DESCRIPTION,
-      offers: {
-        "@type": "Offer",
-        price: "0",
-        priceCurrency: "USD",
-      },
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
     },
   ];
 
@@ -104,88 +91,72 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(homepageJsonLd) }}
       />
-      {/* Hero */}
-      <section className="px-4 pt-10 pb-8 sm:pt-12">
-        <div className="mx-auto max-w-5xl rounded-[2rem] border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/70 to-sky-50/80 px-6 py-8 shadow-[0_30px_80px_-50px_rgba(79,70,229,0.55)] dark:border-indigo-900/60 dark:from-gray-950 dark:via-indigo-950/40 dark:to-slate-950 sm:px-8 sm:py-10">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.35em] text-indigo-600 dark:text-indigo-300">
-              Cache-first Urdu dictionary
-            </p>
-            <h1 className="mb-3 text-4xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-5xl">
-              English to Urdu, with context that actually helps you remember.
-            </h1>
-            <p className="mx-auto mb-8 max-w-2xl text-base text-gray-600 dark:text-gray-300 sm:text-lg">
-              Search any word, see nuanced meanings, examples, poetry, proverbs, and memory cues in one place.
-            </p>
-            <SearchBar autoFocus />
 
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-              {QUICK_LINKS.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`inline-flex min-h-[44px] items-center rounded-full px-4 text-sm font-medium transition-colors ${link.tone}`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          </div>
+      {/* Hero */}
+      <section className="mx-auto max-w-2xl px-4 pb-16 pt-20 text-center sm:pt-28">
+        <p className="mb-5 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700 dark:text-emerald-400">
+          English · Urdu Dictionary
+        </p>
+        <h1 className="text-4xl font-bold tracking-tight text-gray-950 dark:text-white sm:text-5xl">
+          Find the right Urdu word,{" "}
+          <span className="text-emerald-600 dark:text-emerald-400">every time.</span>
+        </h1>
+        <p className="mt-4 text-base text-gray-500 dark:text-gray-400 sm:text-lg">
+          Meanings, examples, and pronunciation — without the clutter.
+        </p>
+
+        <div className="mt-8">
+          <SearchBar autoFocus />
+        </div>
+
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          {SAMPLE_WORDS.map((word) => (
+            <Link
+              key={word}
+              href={`/word/${word}`}
+              className="inline-flex min-h-[36px] items-center rounded-full border border-gray-200 bg-white px-3 text-sm text-gray-600 transition-colors hover:border-emerald-300 hover:text-emerald-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:border-emerald-700 dark:hover:text-emerald-300"
+            >
+              {word}
+            </Link>
+          ))}
         </div>
       </section>
 
-      <div className="mx-auto max-w-5xl px-4 py-8 space-y-10 sm:py-10">
-        {/* Word of the Day */}
-        <section>
-          <div className="mb-4 flex items-end justify-between gap-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gray-500 dark:text-gray-400">
-                Today&apos;s anchor word
-              </p>
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                Word of the Day
-              </h2>
-            </div>
-            <Link
-              href="/browse"
-              className="hidden text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-300 dark:hover:text-indigo-200 sm:inline"
-            >
-              Explore the full library →
-            </Link>
-          </div>
-          <Suspense fallback={<WordCardSkeleton />}>
-            <WotdSection />
-          </Suspense>
-        </section>
+      {/* Word of the Day */}
+      <section className="mx-auto max-w-2xl px-4 pb-16">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500">
+            Word of the Day
+          </h2>
+          <Link
+            href="/browse"
+            className="text-sm font-medium text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
+          >
+            Browse all →
+          </Link>
+        </div>
+        <Suspense fallback={<WordCardSkeleton />}>
+          <WotdSection />
+        </Suspense>
+      </section>
 
-        {/* Browse by Category */}
-        <section>
-          <div className="mb-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gray-500 dark:text-gray-400">
-              Explore by context
-            </p>
-            <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-              Browse by Category
-            </h2>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {CATEGORIES.map((cat) => (
-              <Link
-                key={cat.context}
-                href={`/browse?context=${cat.context}`}
-                className="flex min-h-[88px] items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 transition-all hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-900 dark:hover:border-indigo-600"
-              >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-2xl dark:bg-indigo-950/70">
-                  {cat.emoji}
-                </span>
-                <span className="font-medium text-sm text-gray-700 dark:text-gray-300">
-                  {cat.label}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      </div>
+      {/* Topic chips */}
+      <section className="mx-auto max-w-2xl px-4 pb-24 text-center">
+        <p className="mb-4 text-xs font-semibold uppercase tracking-[0.3em] text-gray-400 dark:text-gray-500">
+          Explore by topic
+        </p>
+        <div className="flex flex-wrap justify-center gap-2">
+          {CATEGORIES.map((cat) => (
+            <Link
+              key={cat.context}
+              href={`/browse?context=${cat.context}`}
+              className="inline-flex min-h-[36px] items-center rounded-full border border-gray-200 bg-white px-3 text-sm text-gray-600 transition-colors hover:border-emerald-300 hover:text-emerald-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400 dark:hover:border-emerald-700 dark:hover:text-emerald-300"
+            >
+              {cat.label}
+            </Link>
+          ))}
+        </div>
+      </section>
     </main>
   );
 }
