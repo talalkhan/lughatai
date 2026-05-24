@@ -1,5 +1,3 @@
-export const runtime = "edge";
-
 import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";

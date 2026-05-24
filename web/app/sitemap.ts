@@ -1,5 +1,3 @@
-export const runtime = "edge";
-
 import { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/site";
 
