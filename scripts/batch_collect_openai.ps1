@@ -83,26 +83,41 @@ function Apply-GenerationShape([System.Text.Json.Nodes.JsonNode]$wordNode, [stri
         throw "Expected top-level JSON object"
     }
 
-    $wordNode["word"] = $queuedWord
+    # Work with explicit JsonObject cast — compound PS indexed assignment
+    # ($node["a"]["b"] = $v) does NOT write back on .NET reference types in PS.
+    $obj = $wordNode.AsObject()
 
-    if ($null -eq $wordNode["_meta"]) {
-        $wordNode["_meta"] = [System.Text.Json.Nodes.JsonObject]::new()
+    # Always anchor the headword to what was queued, rejecting AI drift.
+    $obj.Remove("word") | Out-Null
+    $obj.Add("word", [System.Text.Json.Nodes.JsonValue]::Create($queuedWord))
+
+    # Set _meta.stage using an explicit intermediate reference.
+    $metaNode = $obj["_meta"]
+    if ($null -eq $metaNode) {
+        $metaObj = [System.Text.Json.Nodes.JsonObject]::new()
+        $obj.Add("_meta", $metaObj)
+    } else {
+        $metaObj = $metaNode.AsObject()
     }
-    $wordNode["_meta"]["stage"] = $stage
+    $metaObj.Remove("stage") | Out-Null
+    $metaObj.Add("stage", [System.Text.Json.Nodes.JsonValue]::Create($stage))
 
     if ($stage -eq "core") {
-        $wordFamily = [System.Text.Json.Nodes.JsonArray]::new()
-        $relatedWords = [System.Text.Json.Nodes.JsonObject]::new()
-        $relatedWords["see_also"] = [System.Text.Json.Nodes.JsonArray]::new()
-        $relatedWords["thematic_group"] = [System.Text.Json.Nodes.JsonArray]::new()
+        # Use .Remove() — assigning $null to a JsonObject indexer in PowerShell
+        # does NOT remove the key; only .Remove() reliably does.
+        foreach ($field in @("etymology", "memory_tip", "urdu_poetry", "urdu_proverb", "islamic_reference")) {
+            $obj.Remove($field) | Out-Null
+        }
 
-        $wordNode["etymology"] = $null
-        $wordNode["word_family"] = $wordFamily
-        $wordNode["related_words"] = $relatedWords
-        $wordNode["memory_tip"] = $null
-        $wordNode["urdu_poetry"] = $null
-        $wordNode["urdu_proverb"] = $null
-        $wordNode["islamic_reference"] = $null
+        # Set word_family to empty array and related_words to empty object.
+        $obj.Remove("word_family") | Out-Null
+        $obj.Add("word_family", [System.Text.Json.Nodes.JsonArray]::new())
+
+        $relatedWords = [System.Text.Json.Nodes.JsonObject]::new()
+        $relatedWords.Add("see_also",       [System.Text.Json.Nodes.JsonArray]::new())
+        $relatedWords.Add("thematic_group", [System.Text.Json.Nodes.JsonArray]::new())
+        $obj.Remove("related_words") | Out-Null
+        $obj.Add("related_words", $relatedWords)
     }
 }
 
