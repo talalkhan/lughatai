@@ -112,9 +112,10 @@ try
         });
     builder.Services.AddAuthorization();
 
-    // Rate limiting — 60 req/min per IP
+    // Rate limiting
     builder.Services.AddRateLimiter(options =>
     {
+        // General: 60 req/min per IP
         options.AddPolicy("ip", context =>
             RateLimitPartition.GetFixedWindowLimiter(
                 partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
@@ -125,6 +126,19 @@ try
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                     QueueLimit = 0
                 }));
+
+        // Flag/report endpoint: 5 per IP per hour — stops scripted flooding
+        options.AddPolicy("flag", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 5,
+                    Window = TimeSpan.FromHours(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
+                }));
+
         options.RejectionStatusCode = 429;
         options.OnRejected = async (ctx, ct) =>
         {

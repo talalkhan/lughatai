@@ -86,6 +86,7 @@ public class WordController : ControllerBase
     public record FlagRequest(string Reason, string? Notes);
 
     [HttpPost("word/{word}/flag")]
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("flag")]
     public async Task<IActionResult> FlagWord(string word, [FromBody] FlagRequest req)
     {
         var allowed = new[] { "translation", "example", "poetry", "other" };
