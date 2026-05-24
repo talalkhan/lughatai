@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     };
   } catch {
     return {
-      title: "Word Not Found | UrduMeaning",
+      title: `${params.slug} | UrduMeaning`,
       alternates: {
         canonical: canonicalPath,
       },

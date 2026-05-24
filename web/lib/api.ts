@@ -11,7 +11,10 @@ import {
 } from "./types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
-const API_TIMEOUT_MS = 5000;
+
+// SSR (Node.js) waits up to 60 s so AI-generated words can complete.
+// Browser keeps 5 s for snappy search / interactive calls.
+const API_TIMEOUT_MS = typeof window === "undefined" ? 60_000 : 5_000;
 
 // ── Base fetch helpers ─────────────────────────────────────────────────────
 
