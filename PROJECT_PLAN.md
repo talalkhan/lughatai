@@ -11,8 +11,8 @@
 Last updated  : 2026-05-23
 Updated by    : Codex GPT-5
 Active phase  : Data pipeline hardening
-Current task  : Batch pipeline hardening complete — P3 core schema path, on-demand enrichment queue, atomic queue claiming, sharded backups
-Next task     : Resume P3 OpenAI batches and collect results with the new core-mode flow
+Current task  : Canary follow-up fixes complete — collector resets parse failures, validates queued headwords, and enforces lean stored core rows
+Next task     : Resume P3 OpenAI batches and monitor the next live collect under the hardened core-mode flow
 ```
 
 ### Batch Pipeline State (2026-05-23)
@@ -27,6 +27,7 @@ Next task     : Resume P3 OpenAI batches and collect results with the new core-m
 - **P3 words now default to core-mode generation** in both the hosted queue processor and OpenAI batch submitter
 - **Core hits now self-enrich in the background** after a real user lookup
 - **Backups are now sharded** as `data/word_definitions_backup.partNNN.sql.gz` to stay under GitHub's file limit
+- **2026-05-23 canary retest passed after fixes:** replayed 20/20 core rows inserted cleanly, stage stored as `core`, enrichment-only fields nulled in DB
 
 ### At-a-Glance Progress
 
@@ -1164,6 +1165,7 @@ Next task     : Resume P3 OpenAI batches and collect results with the new core-m
 
 | Date | Agent | Task | Notes |
 |------|-------|------|-------|
+| 2026-05-23 | Codex GPT-5 | Batch canary follow-up fixes | Tightened core prompt with exact-headword rules, made live/batch generation reject headword drift, fixed collector to reset parse failures to `pending`, anchor inserts to queued words, sanitize stored core rows, repaired the canary-damaged DB rows, and verified a 20-word replay cleanly stored `core` rows |
 | 2026-05-23 | Codex GPT-5 | Batch pipeline hardening | Added `core` vs `enriched` generation stages, background enrichment after real user lookup, atomic queue claiming with `UPDATE ... RETURNING`, stage-aware OpenAI batch submit/collect flow, and sharded backup/restore scripts |
 | 2026-05-23 | Codex GPT-5 | UI polish pass | Added shared app shell with desktop header + mobile bottom nav, moved word-detail navigation/actions to the top, added favorite toggle, tightened home hero and browse filters, verified in live dev server |
 | 2026-04-30 | Claude Sonnet 4.6 | P0-001 thru P0-005 | Full directory structure, docker-compose, ASP.NET Core 8 scaffolded, EF Core migrations, Next.js 14 set up |

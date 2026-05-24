@@ -81,6 +81,9 @@ function Write-OK([string]$m)   { Write-Host "  [OK] $m" -ForegroundColor Green 
 function Write-Info([string]$m) { Write-Host "  [..] $m" -ForegroundColor White }
 function Write-Warn([string]$m) { Write-Host "  [!!] $m" -ForegroundColor Yellow }
 function Write-Err([string]$m)  { Write-Host "  [XX] $m" -ForegroundColor Red }
+function Get-WordRequest([string]$word) {
+    return "English headword: $word`nUse this exact headword in the top-level `"word`" field. Do not autocorrect, normalize, or substitute a different word."
+}
 
 # --- Step 1: load config -----------------------------------------------------
 
@@ -190,12 +193,12 @@ for ($b = 0; $b -lt $batchCount; $b++) {
     $sw = [System.IO.StreamWriter]::new($jsonlPath, $false, $utf8NoBom)
     try {
         foreach ($w in $batchWords) {
-            # JSON-escape the word (handles apostrophes, quotes, etc.)
-            $wordJson    = $w.Word | ConvertTo-Json -Compress -Depth 1
-            $wordEscaped = $wordJson.Substring(1, $wordJson.Length - 2)
+            # JSON-escape the user request (handles apostrophes, quotes, etc.)
+            $userPromptJson    = (Get-WordRequest $w.Word) | ConvertTo-Json -Compress -Depth 1
+            $userPromptEscaped = $userPromptJson.Substring(1, $userPromptJson.Length - 2)
             $stage = if ($w.Priority -ge $CoreFromPriority) { "core" } else { "enriched" }
             $customId = "wq-$($w.Id)-$stage"
-            $line = $reqPrefix + $customId + $reqMiddleByStage[$stage] + $wordEscaped + $reqSuffix
+            $line = $reqPrefix + $customId + $reqMiddleByStage[$stage] + $userPromptEscaped + $reqSuffix
             $sw.WriteLine($line)
         }
     } finally {

@@ -49,6 +49,72 @@ function Write-Info([string]$m) { Write-Host "  [..] $m" -ForegroundColor White 
 function Write-Warn([string]$m) { Write-Host "  [!!] $m" -ForegroundColor Yellow }
 function Write-Err([string]$m)  { Write-Host "  [XX] $m" -ForegroundColor Red }
 
+function Normalize-Headword([string]$word) {
+    return $word.Trim().ToLowerInvariant()
+}
+
+function Get-QueuedWordMap([object[]]$wordIds) {
+    $map = @{}
+    if ($null -eq $wordIds -or $wordIds.Count -eq 0) { return $map }
+
+    $idList = (@($wordIds) | ForEach-Object { [int]$_ }) -join ","
+    $sql = "SELECT id, word FROM word_queue WHERE id IN ($idList);"
+    $rawRows = $sql | docker compose exec -T postgres psql -U postgres -d lughatai -t -A -F "`t" 2>&1
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Failed to load queued words for completed batch. $rawRows"
+    }
+
+    foreach ($row in $rawRows) {
+        $row = $row.Trim()
+        if ($row -eq "") { continue }
+
+        $parts = $row -split "`t", 2
+        if ($parts.Count -eq 2 -and $parts[0] -match "^\d+$") {
+            $map[[int]$parts[0]] = $parts[1]
+        }
+    }
+
+    return $map
+}
+
+function Apply-GenerationShape([System.Text.Json.Nodes.JsonNode]$wordNode, [string]$queuedWord, [string]$stage) {
+    if ($wordNode -isnot [System.Text.Json.Nodes.JsonObject]) {
+        throw "Expected top-level JSON object"
+    }
+
+    $wordNode["word"] = $queuedWord
+
+    if ($null -eq $wordNode["_meta"]) {
+        $wordNode["_meta"] = [System.Text.Json.Nodes.JsonObject]::new()
+    }
+    $wordNode["_meta"]["stage"] = $stage
+
+    if ($stage -eq "core") {
+        $wordFamily = [System.Text.Json.Nodes.JsonArray]::new()
+        $relatedWords = [System.Text.Json.Nodes.JsonObject]::new()
+        $relatedWords["see_also"] = [System.Text.Json.Nodes.JsonArray]::new()
+        $relatedWords["thematic_group"] = [System.Text.Json.Nodes.JsonArray]::new()
+
+        $wordNode["etymology"] = $null
+        $wordNode["word_family"] = $wordFamily
+        $wordNode["related_words"] = $relatedWords
+        $wordNode["memory_tip"] = $null
+        $wordNode["urdu_poetry"] = $null
+        $wordNode["urdu_proverb"] = $null
+        $wordNode["islamic_reference"] = $null
+    }
+}
+
+function Set-TrackingValue($target, [string]$name, $value) {
+    if ($null -eq $target.PSObject.Properties[$name]) {
+        $target | Add-Member -NotePropertyName $name -NotePropertyValue $value
+        return
+    }
+
+    $target.$name = $value
+}
+
 # --- load config -------------------------------------------------------------
 
 if (-not (Test-Path $TrackingFile)) {
@@ -112,7 +178,7 @@ do {
             }
 
             # Update status in tracking file
-            $b.status = $status.status
+            Set-TrackingValue -target $b -name "status" -value $status.status
         } catch {
             Write-Warn "Could not check batch $($b.batch_id): $($_.Exception.Message)"
         }
@@ -166,8 +232,9 @@ do {
         }
 
         # Also download error file if present
-        $errorFileId  = $status.error_file_id
-        $erroredWordIds = @()
+        $errorFileId = $status.error_file_id
+        $erroredWordIds = [System.Collections.Generic.HashSet[int]]::new()
+        $requestFailureCount = 0
         if ($errorFileId) {
             $errorPath = Join-Path $TempDir "errors_$($b.batch_id).jsonl"
             Write-Info "Downloading error file $errorFileId..."
@@ -180,9 +247,12 @@ do {
                 foreach ($line in [System.IO.File]::ReadLines($errorPath)) {
                     if ($line -eq '') { continue }
                     $customId = ([System.Text.Json.JsonDocument]::Parse($line)).RootElement.GetProperty('custom_id').GetString()
-                    if ($customId -match '^wq-(\d+)(?:-(core|enriched))?$') { $erroredWordIds += [int]$Matches[1] }
+                    if ($customId -match '^wq-(\d+)(?:-(core|enriched))?$') {
+                        $null = $erroredWordIds.Add([int]$Matches[1])
+                        $requestFailureCount++
+                    }
                 }
-                Write-Warn "$($erroredWordIds.Count) requests failed in this batch"
+                Write-Warn "$requestFailureCount requests failed in this batch"
             } catch {
                 Write-Warn "Could not download error file: $($_.Exception.Message)"
             }
@@ -191,9 +261,14 @@ do {
         # Stream-parse the output JSONL and insert into DB
         Write-Info "Parsing and inserting word definitions..."
 
+        $queuedWordsById = Get-QueuedWordMap @($b.word_ids)
+
         $insertCount  = 0
         $errorCount   = 0
         $skipCount    = 0
+        $jsonErrorCount = 0
+        $wordMismatchCount = 0
+        $missingQueueWordCount = 0
         $doneWordIds  = [System.Collections.Generic.List[int]]::new()
 
         # Accumulate SQL statements for batch DB writes
@@ -214,6 +289,7 @@ do {
         foreach ($line in [System.IO.File]::ReadLines($outputPath)) {
             if ($line -eq '') { continue }
 
+            $wqId = $null
             try {
                 $doc = [System.Text.Json.JsonDocument]::Parse($line)
                 $root = $doc.RootElement
@@ -225,10 +301,18 @@ do {
                 if (-not ($customId -match '^wq-(\d+)(?:-(core|enriched))?$')) { $skipCount++; continue }
                 $wqId = [int]$Matches[1]
                 $stage = if ($Matches[2]) { $Matches[2] } else { "enriched" }
+                if (-not $queuedWordsById.ContainsKey($wqId)) {
+                    $errorCount++
+                    $missingQueueWordCount++
+                    $null = $erroredWordIds.Add($wqId)
+                    continue
+                }
+                $queuedWord = [string]$queuedWordsById[$wqId]
 
                 if ($statusCode -ne 200) {
                     $errorCount++
-                    $erroredWordIds += $wqId
+                    $requestFailureCount++
+                    $null = $erroredWordIds.Add($wqId)
                     continue
                 }
 
@@ -238,51 +322,63 @@ do {
                 # Extract JSON from content (strip any markdown fences or preamble)
                 $jsonStart = $content.IndexOf('{')
                 $jsonEnd   = $content.LastIndexOf('}')
-                if ($jsonStart -lt 0 -or $jsonEnd -le $jsonStart) { $errorCount++; continue }
+                if ($jsonStart -lt 0 -or $jsonEnd -le $jsonStart) {
+                    $errorCount++
+                    $jsonErrorCount++
+                    $null = $erroredWordIds.Add($wqId)
+                    continue
+                }
                 $wordJson  = $content.Substring($jsonStart, $jsonEnd - $jsonStart + 1)
 
-                # Quick validate it's parseable JSON and stamp the generation stage.
+                # Validate the JSON, ensure the model kept the requested headword, and
+                # enforce the stored shape for the generation stage.
                 try {
+                    $wasWordMismatch = $false
                     $wordNode = [System.Text.Json.Nodes.JsonNode]::Parse($wordJson)
                     if ($null -eq $wordNode) { throw "Parsed JSON node was null" }
-                    if ($null -eq $wordNode["_meta"]) {
-                        $wordNode["_meta"] = [System.Text.Json.Nodes.JsonObject]::new()
+                    $returnedWordNode = $wordNode["word"]
+                    if ($null -eq $returnedWordNode) {
+                        throw "Missing top-level word"
                     }
-                    $wordNode["_meta"]["stage"] = $stage
+
+                    $returnedWord = $returnedWordNode.GetValue[string]()
+                    if ([string]::IsNullOrWhiteSpace($returnedWord)) {
+                        throw "Missing top-level word"
+                    }
+
+                    if ((Normalize-Headword $returnedWord) -ne (Normalize-Headword $queuedWord)) {
+                        $wasWordMismatch = $true
+                        $wordMismatchCount++
+                        throw "Returned word '$returnedWord' did not match queued word '$queuedWord'"
+                    }
+
+                    Apply-GenerationShape -wordNode $wordNode -queuedWord $queuedWord -stage $stage
                     $wordJson = $wordNode.ToJsonString()
                 } catch {
                     $errorCount++
+                    if (-not $wasWordMismatch) {
+                        $jsonErrorCount++
+                    }
+                    $null = $erroredWordIds.Add($wqId)
                     continue
                 }
 
                 # Escape the JSON for embedding in SQL (escape single quotes)
                 $wordJsonEscaped = $wordJson -replace "'", "''"
+                $wordNameEscaped = $queuedWord -replace "'", "''"
+                $sqlInserts.AppendLine("INSERT INTO word_definitions (word, data, model)") | Out-Null
+                $sqlInserts.AppendLine("VALUES ('$wordNameEscaped', '$wordJsonEscaped'::jsonb, 'gpt-4o-mini-batch')") | Out-Null
+                $sqlInserts.AppendLine("ON CONFLICT (word_lower) DO UPDATE SET data = EXCLUDED.data, model = EXCLUDED.model, updated_at = now();") | Out-Null
 
-                # Extract the word name from the JSON (or fall back to custom_id lookup)
-                $wordElem = $doc.RootElement  # re-parsed above
-                try {
-                    $wdoc  = [System.Text.Json.JsonDocument]::Parse($wordJson)
-                    $wordName = $wdoc.RootElement.GetProperty('word').GetString().ToLowerInvariant().Trim()
-                } catch {
-                    # Word name isn't in the JSON — we'll fall back to the word_queue lookup below
-                    $wordName = ""
-                }
-
-                if ($wordName -ne "") {
-                    # Append INSERT statement
-                    $wordNameEscaped = $wordName -replace "'", "''"
-                    $sqlInserts.AppendLine("INSERT INTO word_definitions (word, data, model)") | Out-Null
-                    $sqlInserts.AppendLine("VALUES ('$wordNameEscaped', '$wordJsonEscaped'::jsonb, 'gpt-4o-mini-batch')") | Out-Null
-                    $sqlInserts.AppendLine("ON CONFLICT (word_lower) DO UPDATE SET data = EXCLUDED.data, model = EXCLUDED.model, updated_at = now();") | Out-Null
-
-                    $doneWordIds.Add($wqId)
-                    $insertCount++
-                } else {
-                    $errorCount++
-                }
+                $doneWordIds.Add($wqId)
+                $insertCount++
 
             } catch {
                 $errorCount++
+                if ($null -ne $wqId) {
+                    $jsonErrorCount++
+                    $null = $erroredWordIds.Add([int]$wqId)
+                }
             } finally {
                 try { $doc.Dispose() } catch {}
             }
@@ -305,23 +401,27 @@ do {
         }
 
         Write-OK "Inserted $insertCount definitions"
-        if ($errorCount  -gt 0) { Write-Warn "$errorCount requests had errors/bad JSON" }
+        if ($errorCount  -gt 0) { Write-Warn "$errorCount requests had errors" }
+        if ($requestFailureCount -gt 0) { Write-Warn "  Non-200 responses: $requestFailureCount" }
+        if ($jsonErrorCount -gt 0) { Write-Warn "  Invalid JSON / schema issues: $jsonErrorCount" }
+        if ($wordMismatchCount -gt 0) { Write-Warn "  Headword mismatches: $wordMismatchCount" }
+        if ($missingQueueWordCount -gt 0) { Write-Warn "  Missing queue rows: $missingQueueWordCount" }
         if ($skipCount   -gt 0) { Write-Warn "$skipCount lines skipped (unrecognized format)" }
 
         # Reset errored words back to pending
         if ($erroredWordIds.Count -gt 0) {
             Write-Info "Resetting $($erroredWordIds.Count) errored words to pending..."
-            $idList = $erroredWordIds -join ","
+            $idList = (@($erroredWordIds) | Sort-Object) -join ","
             $resetSql = "UPDATE word_queue SET status='pending', attempts=0, error_message='batch:error', updated_at=now() WHERE id IN ($idList);"
             $resetSql | docker compose exec -T postgres psql -U postgres -d lughatai | Out-Null
             Write-OK "Reset to pending"
         }
 
         # Mark batch as collected in tracking file
-        $b.collected    = $true
-        $b.collected_at = (Get-Date -Format "o")
-        $b.inserted     = $insertCount
-        $b.errors       = $errorCount
+        Set-TrackingValue -target $b -name "collected" -value $true
+        Set-TrackingValue -target $b -name "collected_at" -value (Get-Date -Format "o")
+        Set-TrackingValue -target $b -name "inserted" -value $insertCount
+        Set-TrackingValue -target $b -name "errors" -value $errorCount
         $tracking | ConvertTo-Json -Depth 10 | Set-Content $TrackingFile -Encoding UTF8
 
         Write-OK "Batch $($b.batch_id) fully collected"
@@ -338,9 +438,9 @@ do {
             $resetSql | docker compose exec -T postgres psql -U postgres -d lughatai | Out-Null
             Write-OK "Reset $($b.word_ids.Count) words to pending"
         }
-        $b.collected    = $true
-        $b.collected_at = (Get-Date -Format "o")
-        $b.errors       = $b.word_count
+        Set-TrackingValue -target $b -name "collected" -value $true
+        Set-TrackingValue -target $b -name "collected_at" -value (Get-Date -Format "o")
+        Set-TrackingValue -target $b -name "errors" -value $b.word_count
         $tracking | ConvertTo-Json -Depth 10 | Set-Content $TrackingFile -Encoding UTF8
     }
 

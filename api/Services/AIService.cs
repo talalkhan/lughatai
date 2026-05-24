@@ -112,13 +112,14 @@ public class AIService : IWordAIService
     {
         var apiKey = _config["AI:AnthropicApiKey"]
             ?? throw new AIServiceException("Anthropic API key not configured");
+        var userPrompt = BuildWordRequest(word);
 
         var payload = new
         {
             model,
             max_tokens = 8192,   // 8192 for rich Urdu content — common words like "good"/"time" fill 4096+
             system = prompt,
-            messages = new[] { new { role = "user", content = word } }
+            messages = new[] { new { role = "user", content = userPrompt } }
         };
 
         for (int attempt = 0; attempt < 2; attempt++)
@@ -180,6 +181,7 @@ public class AIService : IWordAIService
     {
         var apiKey = _config["AI:OpenAIApiKey"]
             ?? throw new AIServiceException("OpenAI API key not configured");
+        var userPrompt = BuildWordRequest(word);
 
         var payload = new
         {
@@ -188,7 +190,7 @@ public class AIService : IWordAIService
             messages = new[]
             {
                 new { role = "system", content = prompt },
-                new { role = "user", content = word }
+                new { role = "user", content = userPrompt }
             }
         };
 
@@ -228,8 +230,16 @@ public class AIService : IWordAIService
         return $"{_systemPrompt}{Environment.NewLine}{Environment.NewLine}{_corePromptAddendum}";
     }
 
+    private static string BuildWordRequest(string word)
+    {
+        return $"English headword: {word}{Environment.NewLine}Use this exact headword in the top-level \"word\" field. Do not autocorrect, normalize, or substitute a different word.";
+    }
+
     private static WordData StampMeta(WordData data, string model, string generatedBy, WordGenerationStage stage)
     {
+        if (stage == WordGenerationStage.Core)
+            ApplyCoreShape(data);
+
         data.Meta ??= new MetaInfo();
         data.Meta.GeneratedBy = generatedBy;
         data.Meta.GeneratedAt = DateTime.UtcNow.ToString("O");
@@ -237,6 +247,21 @@ public class AIService : IWordAIService
         data.Meta.Stage = stage.ToMetaValue();
         data.Meta.Version ??= "1.0";
         return data;
+    }
+
+    private static void ApplyCoreShape(WordData data)
+    {
+        data.Etymology = null;
+        data.WordFamily = new();
+        data.RelatedWords = new RelatedWords
+        {
+            SeeAlso = new(),
+            ThematicGroup = new()
+        };
+        data.MemoryTip = null;
+        data.UrduPoetry = null;
+        data.UrduProverb = null;
+        data.IslamicReference = null;
     }
 
     public async Task<string?> InterpretRomanUrduAsync(string romanUrdu)
@@ -298,12 +323,28 @@ public class AIService : IWordAIService
         {
             var data = JsonSerializer.Deserialize<WordData>(json, JsonOpts)
                 ?? throw new AIServiceException("Deserialized WordData was null");
-            if (string.IsNullOrEmpty(data.Word)) data.Word = word;
+            if (string.IsNullOrWhiteSpace(data.Word))
+            {
+                data.Word = word;
+                return data;
+            }
+
+            var requestedWord = NormalizeHeadword(word);
+            var returnedWord = NormalizeHeadword(data.Word);
+            if (requestedWord != returnedWord)
+                throw new AIServiceException($"AI returned word '{data.Word}' for requested word '{word}'");
+
+            data.Word = word;
             return data;
         }
         catch (JsonException ex)
         {
             throw new AIServiceException($"AI returned invalid JSON for word '{word}'", ex);
         }
+    }
+
+    private static string NormalizeHeadword(string word)
+    {
+        return word.Trim().ToLowerInvariant();
     }
 }
