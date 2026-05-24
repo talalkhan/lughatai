@@ -293,12 +293,31 @@ do {
         $flushInserts = {
             param([System.Text.StringBuilder]$sb, [System.Collections.Generic.List[int]]$ids)
             if ($ids.Count -eq 0) { return }
+
+            # Capture word strings before $ids is cleared below — needed for Redis invalidation.
+            # $queuedWordsById is captured from the enclosing scope (dynamic PS scoping).
+            $wordsToInvalidate = @(
+                $ids |
+                Where-Object  { $queuedWordsById.ContainsKey([int]$_) } |
+                ForEach-Object { $queuedWordsById[[int]$_] }
+            )
+
             $sb.AppendLine("COMMIT;") | Out-Null
             $sql = $sb.ToString()
             $sql | docker compose exec -T postgres psql -U postgres -d lughatai --set ON_ERROR_STOP=1 | Out-Null
             $sb.Clear() | Out-Null
             $sb.AppendLine("BEGIN;") | Out-Null
             $ids.Clear()
+
+            # Invalidate Redis for every word just written to Postgres.
+            # Without this, Redis serves a stale entry that has no _meta.stage,
+            # so NeedsEnrichment() returns false and the background enricher is
+            # never triggered for batch-collected core words.
+            if ($wordsToInvalidate.Count -gt 0) {
+                $redisKeys = $wordsToInvalidate | ForEach-Object { "word:$_" }
+                # Pass keys as individual args — PowerShell expands the array automatically
+                docker compose exec -T redis redis-cli DEL $redisKeys | Out-Null
+            }
         }
 
         foreach ($line in [System.IO.File]::ReadLines($outputPath)) {
