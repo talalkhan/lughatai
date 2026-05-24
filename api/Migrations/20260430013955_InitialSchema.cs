@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LughatAI.Api.Migrations
+namespace UrduMeaning.Api.Migrations
 {
     /// <inheritdoc />
     public partial class InitialSchema : Migration

@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using LughatAI.Api.Models;
+using UrduMeaning.Api.Models;
 
-namespace LughatAI.Api.Data;
+namespace UrduMeaning.Api.Data;
 
 public class AppDbContext : DbContext
 {

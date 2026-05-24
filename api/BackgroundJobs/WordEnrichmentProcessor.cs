@@ -1,10 +1,10 @@
 using System.Collections.Concurrent;
 using System.Threading.Channels;
-using LughatAI.Api.Data;
-using LughatAI.Api.Models;
-using LughatAI.Api.Services;
+using UrduMeaning.Api.Data;
+using UrduMeaning.Api.Models;
+using UrduMeaning.Api.Services;
 
-namespace LughatAI.Api.BackgroundJobs;
+namespace UrduMeaning.Api.BackgroundJobs;
 
 public interface IWordEnrichmentQueue
 {

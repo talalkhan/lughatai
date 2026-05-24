@@ -3,7 +3,7 @@ using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 
-namespace LughatAI.Api.Controllers;
+namespace UrduMeaning.Api.Controllers;
 
 [ApiController]
 [Route("api/push")]

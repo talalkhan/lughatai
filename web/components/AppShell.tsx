@@ -91,10 +91,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-4 py-3">
               <Link href="/" className="min-w-0 shrink-0">
                 <div className="text-lg font-semibold tracking-tight text-gray-950 dark:text-white">
-                  LughatAI
+                  UrduMeaning
                 </div>
                 <p className="hidden text-xs text-gray-500 dark:text-gray-400 sm:block">
-                  English to Urdu, with context and memory hooks
+                  English to Urdu dictionary, with context and memory hooks
                 </p>
               </Link>
 

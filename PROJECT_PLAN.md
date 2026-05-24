@@ -1,4 +1,4 @@
-# LughatAI — Project Plan & Progress Tracker
+# UrduMeaning — Project Plan & Progress Tracker
 
 > **For agents:** Read CLAUDE.md first. Then read this file top-to-bottom before doing any work.
 > Update this file after every task: mark complete, add notes, update Current Status.
@@ -10,9 +10,9 @@
 ```
 Last updated  : 2026-05-24
 Updated by    : Codex (GPT-5)
-Active phase  : Data pipeline hardening
-Current task  : Align Azure IaC for Pakistan-first deployment defaults
-Next task     : Validate Bicep deploy path for `uaenorth`, then wire Front Door custom domain/DNS
+Active phase  : Launch positioning and SEO prep
+Current task  : UrduMeaning launch rebrand
+Next task     : Set launch analytics and ship on `urdumeaning.com`
 ```
 
 ### Batch Pipeline State (2026-05-23)
@@ -31,6 +31,7 @@ Next task     : Validate Bicep deploy path for `uaenorth`, then wire Front Door 
 - **2026-05-23 enrichment flow debugged:** `WordData.MetaInfo.Stage` property added by Codex was not in the running API DLL (API started before the code change); enrichment never triggered because `NeedsEnrichment()` always saw `Stage=null`. Fix: restart API with `dotnet run`. Test word: `auscultation` (in DB as core, not in Redis).
 - **2026-05-24 Azure IaC updated for Pakistan-first rollout:** default region changed to `uaenorth`, and the retired classic CDN module was replaced with Azure Front Door Standard for `/audio/*` delivery. Storage now provisions a dedicated `frontdoor-health` container for anonymous Front Door origin probes.
 - **2026-05-24 Azure IaC cleanup verified:** Bicep warnings removed, `az bicep build --file infrastructure/main.bicep` is clean, and Azure `what-if` still succeeds against `lughatai-prod-rg` in `uaenorth`.
+- **2026-05-24 launch rebrand completed:** user-facing app name switched to `UrduMeaning`, public SEO/schema URLs now target `urdumeaning.com`, the API project files were renamed to `UrduMeaning.Api.*`, and browser storage keys were updated for the new brand while keeping the existing local DB/infrastructure slugs unchanged.
 
 ### At-a-Glance Progress
 
@@ -131,7 +132,7 @@ Next task     : Validate Bicep deploy path for `uaenorth`, then wire Front Door 
 - **Commands:**
   ```bash
   cd api
-  dotnet new webapi -n LughatAI.Api --no-openapi false
+  dotnet new webapi -n UrduMeaning.Api --no-openapi false
   dotnet add package Dapper
   dotnet add package Npgsql
   dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
@@ -592,7 +593,7 @@ Next task     : Validate Bicep deploy path for `uaenorth`, then wire Front Door 
   - Word of the Day section below search (calls `getWordOfTheDay()`)
   - Category browse links (Religion, Literature, Poetry, Business, etc.)
 - **WoTD card:** Shows English word, Urdu translation in Nastaliq, difficulty badge, short definition, "See full definition →" link.
-- **SEO:** `generateMetadata()` with title "LughatAI — AI-Powered English to Urdu Dictionary" + description.
+- **SEO:** `generateMetadata()` with title "UrduMeaning — AI-Powered English to Urdu Dictionary" + description.
 - **Acceptance criteria:**
   - [ ] Page loads < 2.5s LCP
   - [ ] WOTD card shows correct word (same for all users today)
@@ -750,7 +751,7 @@ Next task     : Validate Bicep deploy path for `uaenorth`, then wire Front Door 
 - **Files:** `web/app/layout.tsx`, each page's `generateMetadata()`
 - **Requirements:**
   - Root layout: viewport, charset, default OG image, Twitter card
-  - Word detail: title = "{Word} in Urdu | LughatAI", description = first 160 chars of definition,
+  - Word detail: title = "{Word} in Urdu | UrduMeaning", description = first 160 chars of definition,
     OG image = word + Urdu translation (can be a placeholder image for now),
     `schema.org/DefinedTerm` JSON-LD
   - Canonical URLs
@@ -1038,7 +1039,7 @@ Next task     : Validate Bicep deploy path for `uaenorth`, then wire Front Door 
 - **Agent:** Claude Sonnet 4.6
 - **Description:** Service Worker caches looked-up words in IndexedDB for offline access.
 - **Files:** `web/lib/hooks/useWordCache.ts`, `web/components/WordCacheWriter.tsx`
-- **Notes:** DB_NAME "lughatai", STORE "words", max 500 words LRU eviction by saved_at. WordCacheWriter is an invisible "use client" component mounted in the SSR word detail page to bridge SSR→client hook. `getOfflineWord()` and `bulkCacheWords()` exported for offline fallback and pro packs.
+- **Notes:** DB_NAME "urdumeaning", STORE "words", max 500 words LRU eviction by saved_at. WordCacheWriter is an invisible "use client" component mounted in the SSR word detail page to bridge SSR→client hook. `getOfflineWord()` and `bulkCacheWords()` exported for offline fallback and pro packs.
 
 ---
 
@@ -1168,6 +1169,7 @@ Next task     : Validate Bicep deploy path for `uaenorth`, then wire Front Door 
 
 | Date | Agent | Task | Notes |
 |------|-------|------|-------|
+| 2026-05-24 | Codex GPT-5 | UrduMeaning launch rebrand | Rebranded the public app from LughatAI to UrduMeaning across metadata, UI copy, schema URLs, PWA assets, browser storage keys, and API project filenames while leaving existing DB and infra slugs intact to avoid launch-week migration churn |
 | 2026-05-23 | Codex GPT-5 | Batch canary follow-up fixes | Tightened core prompt with exact-headword rules, made live/batch generation reject headword drift, fixed collector to reset parse failures to `pending`, anchor inserts to queued words, sanitize stored core rows, repaired the canary-damaged DB rows, and verified a 20-word replay cleanly stored `core` rows |
 | 2026-05-23 | Codex GPT-5 | Batch pipeline hardening | Added `core` vs `enriched` generation stages, background enrichment after real user lookup, atomic queue claiming with `UPDATE ... RETURNING`, stage-aware OpenAI batch submit/collect flow, and sharded backup/restore scripts |
 | 2026-05-23 | Codex GPT-5 | UI polish pass | Added shared app shell with desktop header + mobile bottom nav, moved word-detail navigation/actions to the top, added favorite toggle, tightened home hero and browse filters, verified in live dev server |

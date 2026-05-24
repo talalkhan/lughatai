@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       : `${params.slug} meaning in Urdu`;
 
     return {
-      title: `${word.word} in Urdu | LughatAI`,
+      title: `${word.word} in Urdu | UrduMeaning`,
       description,
       openGraph: {
         title: `${word.word} — ${urdu ?? "Urdu Translation"}`,
@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       },
     };
   } catch {
-    return { title: "Word Not Found | LughatAI" };
+    return { title: "Word Not Found | UrduMeaning" };
   }
 }
 
@@ -224,7 +224,7 @@ export default async function WordDetailPage({ params }: Props) {
     "@type": "DefinedTerm",
     name: word.word,
     description: word.meanings?.[0]?.definition_en,
-    inDefinedTermSet: "https://lughatai.com",
+    inDefinedTermSet: "https://urdumeaning.com",
   };
 
   return (

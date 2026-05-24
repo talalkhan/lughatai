@@ -1,4 +1,4 @@
-namespace LughatAI.Api.Models;
+namespace UrduMeaning.Api.Models;
 
 public class Correction
 {

@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace LughatAI.Api.Middleware;
+namespace UrduMeaning.Api.Middleware;
 
 public class InputSanitizerMiddleware
 {

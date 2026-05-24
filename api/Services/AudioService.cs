@@ -1,10 +1,10 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
-using LughatAI.Api.Data;
-using LughatAI.Api.Models;
+using UrduMeaning.Api.Data;
+using UrduMeaning.Api.Models;
 using System.Security;
 
-namespace LughatAI.Api.Services;
+namespace UrduMeaning.Api.Services;
 
 public interface IAudioService
 {
@@ -89,7 +89,7 @@ public class AudioService : IAudioService
 
         request.Headers.Add("Ocp-Apim-Subscription-Key", key);
         request.Headers.Add("X-Microsoft-OutputFormat", "audio-16khz-128kbitrate-mono-mp3");
-        request.Headers.Add("User-Agent", "LughatAI/1.0");
+        request.Headers.Add("User-Agent", "UrduMeaning/1.0");
         request.Content = new StringContent(ssml, System.Text.Encoding.UTF8, "application/ssml+xml");
 
         HttpResponseMessage response;

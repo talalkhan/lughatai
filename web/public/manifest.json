@@ -1,6 +1,6 @@
 {
-  "name": "LughatAI — English to Urdu Dictionary",
-  "short_name": "LughatAI",
+  "name": "UrduMeaning — English to Urdu Dictionary",
+  "short_name": "UrduMeaning",
   "description": "The richest English-to-Urdu dictionary, powered by AI. Translations, poetry, etymology and more.",
   "start_url": "/",
   "display": "standalone",

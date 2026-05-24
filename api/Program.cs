@@ -1,8 +1,8 @@
 using System.Threading.RateLimiting;
-using LughatAI.Api.BackgroundJobs;
-using LughatAI.Api.Data;
-using LughatAI.Api.Middleware;
-using LughatAI.Api.Services;
+using UrduMeaning.Api.BackgroundJobs;
+using UrduMeaning.Api.Data;
+using UrduMeaning.Api.Middleware;
+using UrduMeaning.Api.Services;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -28,7 +28,7 @@ try
             config.WriteTo.DatadogLogs(
                 apiKey: ddApiKey,
                 source: "csharp",
-                service: ctx.Configuration["Datadog:ServiceName"] ?? "lughatai-api",
+                service: ctx.Configuration["Datadog:ServiceName"] ?? "urdumeaning-api",
                 host: Environment.MachineName,
                 tags: new[] { $"env:{ctx.HostingEnvironment.EnvironmentName.ToLower()}", "version:1.0" });
         }
@@ -39,7 +39,7 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(c =>
     {
-        c.SwaggerDoc("v1", new() { Title = "LughatAI API", Version = "v1" });
+        c.SwaggerDoc("v1", new() { Title = "UrduMeaning API", Version = "v1" });
     });
 
     // EF Core (migrations only)

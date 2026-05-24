@@ -2,7 +2,7 @@
 # scripts/process_word_list.ps1
 #
 # Converts the raw Moby/SCOWL word list (466K entries) into a clean,
-# frequency-sorted queue ready for LughatAI's word_queue table.
+# frequency-sorted queue ready for UrduMeaning's word_queue table.
 #
 # What it does:
 #   1. Downloads a 50K frequency list from hermitdave/FrequencyWords (cached)
@@ -107,7 +107,7 @@ $StopWordSet = [System.Collections.Generic.HashSet[string]]::new(
 
 # --- Step 1: ensure output directory -----------------------------------------
 
-Write-Header "LughatAI - process_word_list.ps1"
+Write-Header "UrduMeaning - process_word_list.ps1"
 Write-Host "  Source:     $SourceFile" -ForegroundColor Gray
 Write-Host "  Output dir: $OutputDir"  -ForegroundColor Gray
 Write-Host "  P1 cutoff:  rank <= $P1MaxRank"  -ForegroundColor Gray
@@ -290,7 +290,7 @@ $sw = [System.IO.StreamWriter]::new($sqlPath, $false, [System.Text.Encoding]::UT
 
 try {
     $sw.WriteLine("-- =============================================================================")
-    $sw.WriteLine("-- LughatAI word_queue bulk insert")
+    $sw.WriteLine("-- UrduMeaning word_queue bulk insert")
     $sw.WriteLine("-- Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
     $sw.WriteLine("-- Total words: $totalKept  (P1=$($bucket1.Count) P2=$($bucket2.Count) P3=$($bucket3.Count))")
     $sw.WriteLine("-- Load command:")

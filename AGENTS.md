@@ -1,4 +1,4 @@
-# LughatAI — Agent Instructions (Codex)
+# UrduMeaning — Agent Instructions (Codex)
 
 > All project instructions are in **CLAUDE.md** at the repo root.
 > Read that file first — it is the single source of truth for all agents.

@@ -1,6 +1,6 @@
 # Word Lists
 
-Domain-specific word lists for expanding the LughatAI database beyond the initial 10k COCA seed.
+Domain-specific word lists for expanding the UrduMeaning database beyond the initial 10k COCA seed.
 
 ## How to add a list
 

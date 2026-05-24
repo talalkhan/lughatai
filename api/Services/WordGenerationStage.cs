@@ -1,4 +1,4 @@
-namespace LughatAI.Api.Services;
+namespace UrduMeaning.Api.Services;
 
 public enum WordGenerationStage
 {

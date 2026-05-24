@@ -39,7 +39,7 @@ function sm2(card: FlashcardState, quality: number): FlashcardState {
   };
 }
 
-const STORAGE_KEY = "lughatai_flashcards";
+const STORAGE_KEY = "urdumeaning_flashcards";
 
 function loadStates(): Record<string, FlashcardState> {
   try {
@@ -209,7 +209,6 @@ export default function FlashcardsPage() {
   }
 
   const current = deck[currentIndex];
-  const primaryTranslation = current.meanings?.[0]?.translations?.primary;
   const nastaliq = current.script_variants?.nastaliq;
   const romanUrdu = current.script_variants?.roman_urdu;
   const definition = current.meanings?.[0]?.definition_en;

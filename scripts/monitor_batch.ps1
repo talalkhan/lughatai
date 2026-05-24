@@ -24,7 +24,7 @@ $authHdrs  = @{ Authorization = "Bearer $openAiKey" }
 function Show-Dashboard {
     try { Clear-Host } catch {}
     $now = Get-Date -Format "HH:mm:ss"
-    Write-Host "  LughatAI Batch Monitor  $now" -ForegroundColor Cyan
+    Write-Host "  UrduMeaning Batch Monitor  $now" -ForegroundColor Cyan
     Write-Host "  ================================" -ForegroundColor DarkGray
 
     # --- OpenAI batch status ---

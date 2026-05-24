@@ -1,8 +1,8 @@
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
-using LughatAI.Api.Data;
+using UrduMeaning.Api.Data;
 
-namespace LughatAI.Api.Controllers;
+namespace UrduMeaning.Api.Controllers;
 
 [ApiController]
 [Route("api/admin")]

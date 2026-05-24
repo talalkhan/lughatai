@@ -51,7 +51,7 @@ $startDone = 0
 $firstRun  = $true
 
 Write-Host ""
-Write-Host "LughatAI — Queue Monitor  (Ctrl+C to stop)" -ForegroundColor Cyan
+Write-Host "UrduMeaning — Queue Monitor  (Ctrl+C to stop)" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 
 while ($true) {
@@ -73,7 +73,7 @@ while ($true) {
 
     Clear-Host
     Write-Host ""
-    Write-Host "LughatAI — Queue Monitor  (Ctrl+C to stop)" -ForegroundColor Cyan
+    Write-Host "UrduMeaning — Queue Monitor  (Ctrl+C to stop)" -ForegroundColor Cyan
     Write-Host "============================================" -ForegroundColor Cyan
     Write-Host "  $(Get-Date -Format 'HH:mm:ss')" -ForegroundColor Gray
     Write-Host ""

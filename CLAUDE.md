@@ -1,14 +1,14 @@
-# LughatAI — Agent Instructions
+# UrduMeaning — Agent Instructions
 
 > Read this file first. Every agent (Claude Code, Codex, Antigravity, etc.) working on this
 > project must read CLAUDE.md + PROJECT_PLAN.md before writing any code.
 
 ## What Is This
 
-LughatAI is an AI-powered English-to-Urdu dictionary web app.
+UrduMeaning is an AI-powered English-to-Urdu dictionary web app.
 - Cache-first: AI called once per word, result stored forever in PostgreSQL.
 - Owner: ThetaFoundry LLC
-- PRD: stored at `docs/LughatAI_PRD_v1.2.md` (canonical reference for all requirements)
+- PRD: stored at `docs/UrduMeaning_PRD_v1.2.docx` (canonical reference for all requirements)
 
 ---
 
@@ -19,7 +19,7 @@ lughatai/
 ├── CLAUDE.md                  ← You are here. Agent instructions.
 ├── PROJECT_PLAN.md            ← Living task tracker. Update after every task.
 ├── docs/
-│   └── LughatAI_PRD_v1.2.md  ← Full PRD. Source of truth for all requirements.
+│   └── UrduMeaning_PRD_v1.2.docx ← Full PRD. Source of truth for all requirements.
 ├── api/                       ← ASP.NET Core 8 backend
 │   ├── Controllers/
 │   ├── Services/
@@ -325,7 +325,7 @@ These are final decisions from PRD Section 14. Do not change without explicit us
 
 | # | Decision | Detail |
 |---|----------|--------|
-| 1 | App name | LughatAI |
+| 1 | App name | UrduMeaning |
 | 2 | Roman Urdu search | String match against stored `roman_urdu` field only (Phase 1). AI-powered in Phase 2. |
 | 3 | Audio generation | Lazy — generate on first play, cache forever in Azure Blob |
 | 4 | Devanagari | Skip Phase 1 & 2. JSON field reserved. Populate in Phase 3. |

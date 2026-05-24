@@ -1,10 +1,10 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using LughatAI.Api.Data;
-using LughatAI.Api.Services;
+using UrduMeaning.Api.Data;
+using UrduMeaning.Api.Services;
 
-namespace LughatAI.Api.Controllers;
+namespace UrduMeaning.Api.Controllers;
 
 [ApiController]
 [Route("api")]

@@ -37,7 +37,7 @@ $words = Get-Content $File -Encoding UTF8 |
     Sort-Object -Unique
 
 Write-Host ""
-Write-Host "LughatAI — Add Words" -ForegroundColor Cyan
+Write-Host "UrduMeaning — Add Words" -ForegroundColor Cyan
 Write-Host "====================" -ForegroundColor Cyan
 Write-Host "  File:     $File" -ForegroundColor Gray
 Write-Host "  Words:    $($words.Count)" -ForegroundColor Gray

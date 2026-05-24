@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace LughatAI.Api.Migrations
+namespace UrduMeaning.Api.Migrations
 {
     /// <inheritdoc />
     public partial class AddModelColumn : Migration

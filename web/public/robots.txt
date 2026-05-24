@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://lughatai.com/sitemap.xml
+Sitemap: https://urdumeaning.com/sitemap.xml

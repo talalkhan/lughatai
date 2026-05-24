@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import type { CSSProperties } from "react";
 import localFont from "next/font/local";
-import { Noto_Nastaliq_Urdu } from "next/font/google";
 import AppShell from "@/components/AppShell";
 import AuthProviderWrapper from "@/components/AuthProviderWrapper";
 import InstallPrompt from "@/components/InstallPrompt";
@@ -12,25 +12,23 @@ const geist = localFont({
   weight: "100 900",
 });
 
-const nastaliq = Noto_Nastaliq_Urdu({
-  weight: ["400", "700"],
-  subsets: ["arabic"],
-  variable: "--font-nastaliq",
-});
+const htmlStyle = {
+  "--font-nastaliq": '"Noto Nastaliq Urdu", "Noto Naskh Arabic", serif',
+} as CSSProperties;
 
 export const metadata: Metadata = {
-  title: "LughatAI — AI-Powered English to Urdu Dictionary",
+  title: "UrduMeaning | English to Urdu Dictionary",
   description:
-    "The richest English-to-Urdu dictionary, powered by AI. Find detailed translations, examples, poetry, and more.",
-  keywords: ["Urdu dictionary", "English to Urdu", "translation", "AI dictionary"],
+    "English to Urdu meanings, translations, examples, pronunciation, poetry, and more.",
+  keywords: ["Urdu dictionary", "English to Urdu", "meaning in Urdu", "AI dictionary"],
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "LughatAI",
+    title: "UrduMeaning",
   },
   openGraph: {
-    siteName: "LughatAI",
+    siteName: "UrduMeaning",
     type: "website",
   },
   twitter: {
@@ -46,7 +44,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geist.variable} ${nastaliq.variable}`}>
+    <html
+      lang="en"
+      className={geist.variable}
+      style={htmlStyle}
+    >
       <body className="antialiased bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen">
         <AuthProviderWrapper>
           <AppShell>{children}</AppShell>

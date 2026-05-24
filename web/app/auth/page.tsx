@@ -47,7 +47,7 @@ export default function AuthPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
-            LughatAI
+            UrduMeaning
           </Link>
           <p className="mt-2 text-gray-600 dark:text-gray-400 text-sm">
             {mode === "login" ? "Welcome back" : "Create your account"}

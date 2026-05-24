@@ -71,7 +71,7 @@ export default function FlagButton({
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-                    What's wrong?
+                    What&apos;s wrong?
                   </label>
                   <div className="space-y-2">
                     {REASONS.map(r => (

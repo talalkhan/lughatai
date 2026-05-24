@@ -45,7 +45,7 @@ $nextStep = $null   # first unresolved issue becomes THE next step
 # ═════════════════════════════════════════════════════════════════════════════
 Clear-Host
 Write-Host ""
-Write-Host "  LughatAI — Project Status" -ForegroundColor Cyan
+Write-Host "  UrduMeaning — Project Status" -ForegroundColor Cyan
 Write-Host "  ==========================" -ForegroundColor Cyan
 Write-Host "  $(Get-Date -Format 'yyyy-MM-dd  HH:mm:ss')" -ForegroundColor DarkGray
 

@@ -1,4 +1,4 @@
--- LughatAI: Seed word_queue with top 10,000 most common English words
+-- UrduMeaning: Seed word_queue with top 10,000 most common English words
 -- Priority 1 = top 1000, Priority 2 = 1001-5000, Priority 3 = 5001-10000
 -- Source: Based on COCA (Corpus of Contemporary American English) frequency list
 -- Run: psql -U postgres -d lughatai -f scripts/seed_word_queue.sql

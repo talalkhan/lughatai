@@ -1,7 +1,8 @@
 import { MetadataRoute } from "next";
 
-const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://lughatai.com";
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://urdumeaning.com";
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+const SITEMAP_FETCH_TIMEOUT_MS = 5000;
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600; // regenerate every hour
@@ -9,6 +10,10 @@ export const revalidate = 3600; // regenerate every hour
 interface WordRow {
   word: string;
   updated_at?: string;
+}
+
+interface BrowseResponse {
+  words: WordRow[];
 }
 
 async function fetchAllWords(): Promise<WordRow[]> {
@@ -19,13 +24,27 @@ async function fetchAllWords(): Promise<WordRow[]> {
     const limit = 1000;
 
     while (true) {
-      const res = await fetch(
-        `${API_URL}/api/browse?page=${page}&limit=${limit}`,
-        { cache: "no-store" }
-      );
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), SITEMAP_FETCH_TIMEOUT_MS);
+
+      let res: Response;
+      try {
+        res = await fetch(
+          `${API_URL}/api/browse?page=${page}&limit=${limit}`,
+          {
+            cache: "no-store",
+            signal: controller.signal,
+          }
+        );
+      } catch {
+        clearTimeout(timeout);
+        break;
+      }
+      clearTimeout(timeout);
+
       if (!res.ok) break;
-      const data = await res.json();
-      words.push(...data.words.map((w: any) => ({ word: w.word })));
+      const data = (await res.json()) as BrowseResponse;
+      words.push(...data.words.map(({ word }) => ({ word })));
       if (data.words.length < limit) break;
       page++;
     }

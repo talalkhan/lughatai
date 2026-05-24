@@ -8,12 +8,12 @@ import { getWordOfTheDay } from "@/lib/api";
 import { WordData } from "@/lib/types";
 
 export const metadata: Metadata = {
-  title: "LughatAI — AI-Powered English to Urdu Dictionary",
+  title: "UrduMeaning | English to Urdu Dictionary",
   description:
-    "The richest English-to-Urdu dictionary, powered by AI. Discover translations, examples, poetry, and deep cultural context.",
+    "English to Urdu meanings, translations, examples, poetry, and deep cultural context.",
   openGraph: {
-    title: "LughatAI — AI-Powered English to Urdu Dictionary",
-    description: "The richest English-to-Urdu dictionary, powered by AI.",
+    title: "UrduMeaning | English to Urdu Dictionary",
+    description: "English to Urdu meanings, translations, examples, poetry, and more.",
     type: "website",
   },
 };

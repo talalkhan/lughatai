@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace LughatAI.Api.Models;
+namespace UrduMeaning.Api.Models;
 
 public class WordData
 {

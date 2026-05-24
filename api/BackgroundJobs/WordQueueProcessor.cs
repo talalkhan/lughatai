@@ -1,7 +1,7 @@
-using LughatAI.Api.Data;
-using LughatAI.Api.Services;
+using UrduMeaning.Api.Data;
+using UrduMeaning.Api.Services;
 
-namespace LughatAI.Api.BackgroundJobs;
+namespace UrduMeaning.Api.BackgroundJobs;
 
 public class WordQueueProcessor : BackgroundService
 {

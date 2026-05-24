@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using LughatAI.Api.Services;
+using UrduMeaning.Api.Services;
 using System.ComponentModel.DataAnnotations;
 
-namespace LughatAI.Api.Controllers;
+namespace UrduMeaning.Api.Controllers;
 
 [ApiController]
 [Route("api/auth")]

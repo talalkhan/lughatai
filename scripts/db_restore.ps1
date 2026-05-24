@@ -52,7 +52,7 @@ function New-DockerPsqlProcess {
 }
 
 Write-Host ""
-Write-Host "LughatAI — Database Restore" -ForegroundColor Cyan
+Write-Host "UrduMeaning — Database Restore" -ForegroundColor Cyan
 Write-Host "===========================" -ForegroundColor Cyan
 Write-Host ""
 

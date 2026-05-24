@@ -2,11 +2,11 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using Dapper;
-using LughatAI.Api.Models;
+using UrduMeaning.Api.Models;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 
-namespace LughatAI.Api.Services;
+namespace UrduMeaning.Api.Services;
 
 public interface IAuthService
 {

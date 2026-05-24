@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -7,8 +8,8 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const DISMISSED_KEY = "lughatai_install_dismissed";
-const VISIT_COUNT_KEY = "lughatai_visit_count";
+const DISMISSED_KEY = "urdumeaning_install_dismissed";
+const VISIT_COUNT_KEY = "urdumeaning_visit_count";
 
 export default function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
@@ -53,18 +54,18 @@ export default function InstallPrompt() {
   return (
     <div
       role="dialog"
-      aria-label="Install LughatAI app"
+      aria-label="Install UrduMeaning app"
       className="fixed bottom-24 left-4 right-4 z-40 flex items-start gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-xl dark:border-gray-700 dark:bg-gray-900 sm:bottom-4 sm:left-auto sm:right-4 sm:w-80"
     >
-      <img
+      <Image
         src="/icons/icon-192.png"
-        alt="LughatAI icon"
+        alt="UrduMeaning icon"
         width={48}
         height={48}
         className="rounded-xl shrink-0"
       />
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm">Add LughatAI to Home Screen</p>
+        <p className="font-semibold text-sm">Add UrduMeaning to Home Screen</p>
         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
           Instant access, works offline
         </p>

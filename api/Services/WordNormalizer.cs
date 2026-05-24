@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace LughatAI.Api.Services;
+namespace UrduMeaning.Api.Services;
 
 public interface IWordNormalizer
 {

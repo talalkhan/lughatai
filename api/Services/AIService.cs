@@ -2,9 +2,9 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using LughatAI.Api.Models;
+using UrduMeaning.Api.Models;
 
-namespace LughatAI.Api.Services;
+namespace UrduMeaning.Api.Services;
 
 public class AIServiceException : Exception
 {

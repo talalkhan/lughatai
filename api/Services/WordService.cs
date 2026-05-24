@@ -1,9 +1,9 @@
 using System.Security.Claims;
-using LughatAI.Api.BackgroundJobs;
-using LughatAI.Api.Data;
-using LughatAI.Api.Models;
+using UrduMeaning.Api.BackgroundJobs;
+using UrduMeaning.Api.Data;
+using UrduMeaning.Api.Models;
 
-namespace LughatAI.Api.Services;
+namespace UrduMeaning.Api.Services;
 
 public interface IWordService
 {

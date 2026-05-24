@@ -1,11 +1,11 @@
 using System.Security.Claims;
 using Dapper;
-using LughatAI.Api.Services;
+using UrduMeaning.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Npgsql;
 
-namespace LughatAI.Api.Controllers;
+namespace UrduMeaning.Api.Controllers;
 
 [ApiController]
 [Route("api/user")]

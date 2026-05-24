@@ -1,4 +1,4 @@
-# LughatAI — Batch Pipeline Runbook (P3-005)
+# UrduMeaning — Batch Pipeline Runbook (P3-005)
 
 Pre-requisites before running this runbook:
 - Azure resources deployed (P3-001 complete, `az deployment group create` succeeded)

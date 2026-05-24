@@ -54,7 +54,7 @@ function Close-BackupPart($part) {
 }
 
 Write-Host ""
-Write-Host "LughatAI — Database Backup" -ForegroundColor Cyan
+Write-Host "UrduMeaning — Database Backup" -ForegroundColor Cyan
 Write-Host "==========================" -ForegroundColor Cyan
 Write-Host ""
 

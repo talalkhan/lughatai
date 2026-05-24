@@ -1,9 +1,9 @@
 using Dapper;
-using LughatAI.Api.Models;
+using UrduMeaning.Api.Models;
 using Npgsql;
 using System.Text.Json;
 
-namespace LughatAI.Api.Data;
+namespace UrduMeaning.Api.Data;
 
 public interface IWordRepository
 {
@@ -153,7 +153,7 @@ public class WordRepository : IWordRepository
         using var conn = Connection();
         var sql = """
             SELECT data FROM word_definitions
-            ORDER BY MD5(word || 'lughatai_wotd_salt' || CURRENT_DATE::text)
+            ORDER BY MD5(word || 'urdumeaning_wotd_salt' || CURRENT_DATE::text)
             LIMIT 1
             """;
         var json = await conn.QuerySingleOrDefaultAsync<string>(sql);

@@ -1,11 +1,15 @@
 import withPWAInit from "@ducanh2912/next-pwa";
 
+const disablePwa =
+  process.env.NODE_ENV === "development" ||
+  process.env.SKIP_PWA === "1";
+
 const withPWA = withPWAInit({
   dest: "public",
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  disable: process.env.NODE_ENV === "development",
+  disable: disablePwa,
   workboxOptions: {
     disableDevLogs: true,
     runtimeCaching: [

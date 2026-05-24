@@ -3,7 +3,7 @@ import BrowseClient from "./BrowseClient";
 import WordCardSkeleton from "@/components/skeletons/WordCardSkeleton";
 
 export const metadata = {
-  title: "Browse Words | LughatAI",
+  title: "Browse Words | UrduMeaning",
   description: "Browse English words by difficulty, CEFR level, or category.",
 };
 

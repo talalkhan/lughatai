@@ -1,4 +1,4 @@
-// LughatAI — Push notification handler
+// UrduMeaning — Push notification handler
 // This file is merged into the Workbox SW by next-pwa's custom worker option.
 // Handles: push events (WoTD notification), notificationclick, notificationclose.
 
@@ -9,10 +9,10 @@ self.addEventListener("push", (event) => {
   try {
     payload = event.data.json();
   } catch {
-    payload = { title: "LughatAI", body: event.data.text() };
+    payload = { title: "UrduMeaning", body: event.data.text() };
   }
 
-  const { title = "LughatAI", body = "Word of the Day is ready!", word, url } = payload;
+  const { title = "UrduMeaning", body = "Word of the Day is ready!", word, url } = payload;
 
   event.waitUntil(
     self.registration.showNotification(title, {

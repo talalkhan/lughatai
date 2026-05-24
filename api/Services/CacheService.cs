@@ -1,8 +1,8 @@
 using System.Text.Json;
-using LughatAI.Api.Models;
+using UrduMeaning.Api.Models;
 using StackExchange.Redis;
 
-namespace LughatAI.Api.Services;
+namespace UrduMeaning.Api.Services;
 
 public interface ICacheService
 {

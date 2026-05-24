@@ -4,7 +4,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace LughatAI.Api.Migrations
+namespace UrduMeaning.Api.Migrations
 {
     /// <inheritdoc />
     public partial class AddUserTables : Migration

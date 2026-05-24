@@ -10,8 +10,8 @@ import {
 import { login, logout, refreshToken, register } from "./api";
 import { AuthResult, UserDto } from "./types";
 
-const ACCESS_TOKEN_KEY = "lughatai_access_token";
-const REFRESH_TOKEN_KEY = "lughatai_refresh_token";
+const ACCESS_TOKEN_KEY = "urdumeaning_access_token";
+const REFRESH_TOKEN_KEY = "urdumeaning_refresh_token";
 
 interface AuthState {
   user: UserDto | null;
@@ -34,6 +34,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading: true,
   });
 
+  const applyAuth = useCallback((result: AuthResult) => {
+    localStorage.setItem(ACCESS_TOKEN_KEY, result.accessToken);
+    localStorage.setItem(REFRESH_TOKEN_KEY, result.refreshToken);
+    setState({ user: result.user, accessToken: result.accessToken, isLoading: false });
+  }, []);
+
   // Rehydrate from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(ACCESS_TOKEN_KEY);
@@ -53,13 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem(REFRESH_TOKEN_KEY);
         setState({ user: null, accessToken: null, isLoading: false });
       });
-  }, []);
-
-  const applyAuth = useCallback((result: AuthResult) => {
-    localStorage.setItem(ACCESS_TOKEN_KEY, result.accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, result.refreshToken);
-    setState({ user: result.user, accessToken: result.accessToken, isLoading: false });
-  }, []);
+  }, [applyAuth]);
 
   const handleLogin = useCallback(async (email: string, password: string) => {
     const result = await login(email, password);

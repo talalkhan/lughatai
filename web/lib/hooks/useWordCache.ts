@@ -1,11 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { WordData } from "@/lib/types";
 
-const DB_NAME = "lughatai";
+const DB_NAME = "urdumeaning";
 const DB_VERSION = 1;
 const STORE = "words";
+
+interface CachedWord extends WordData {
+  saved_at: number;
+}
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -44,7 +48,7 @@ async function getWord(word: string): Promise<WordData | null> {
 async function getAllWords(): Promise<WordData[]> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const req = db.transaction(STORE, "readonly").objectStore(STORE).getAll();
+    const req = db.transaction(STORE, "readonly").objectStore(STORE).getAll() as IDBRequest<CachedWord[]>;
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -56,7 +60,7 @@ async function deleteOldWords(maxCount: number): Promise<void> {
   if (all.length <= maxCount) return;
 
   // Sort by saved_at ascending, remove oldest
-  const sorted = all.sort((a, b) => (a as any).saved_at - (b as any).saved_at);
+  const sorted = (all as CachedWord[]).sort((a, b) => a.saved_at - b.saved_at);
   const toDelete = sorted.slice(0, all.length - maxCount).map(w => w.word);
 
   return new Promise((resolve, reject) => {
