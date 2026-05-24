@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Noto_Nastaliq_Urdu } from "next/font/google";
+import AppShell from "@/components/AppShell";
 import AuthProviderWrapper from "@/components/AuthProviderWrapper";
 import InstallPrompt from "@/components/InstallPrompt";
 import "./globals.css";
@@ -48,7 +49,7 @@ export default function RootLayout({
     <html lang="en" className={`${geist.variable} ${nastaliq.variable}`}>
       <body className="antialiased bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 min-h-screen">
         <AuthProviderWrapper>
-          {children}
+          <AppShell>{children}</AppShell>
           <InstallPrompt />
         </AuthProviderWrapper>
       </body>

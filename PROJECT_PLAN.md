@@ -9,10 +9,10 @@
 
 ```
 Last updated  : 2026-05-23
-Updated by    : Claude Sonnet 4.6
-Active phase  : Data pipeline (batch word generation)
-Current task  : OpenAI Batch API — 14,087 P1+P2 words submitted, processing (~1-4h remaining)
-Next task     : P6-001 (Stripe Checkout) — resume after batch collection completes
+Updated by    : Codex GPT-5
+Active phase  : UI polish / monetization prep
+Current task  : UI polish pass complete — shared shell, top-of-page word actions, favorites save toggle, denser home/browse framing
+Next task     : P6-001 (Stripe Checkout) — resume when ready
 ```
 
 ### Batch Pipeline State (2026-05-23)
@@ -1162,6 +1162,7 @@ Next task     : P6-001 (Stripe Checkout) — resume after batch collection compl
 
 | Date | Agent | Task | Notes |
 |------|-------|------|-------|
+| 2026-05-23 | Codex GPT-5 | UI polish pass | Added shared app shell with desktop header + mobile bottom nav, moved word-detail navigation/actions to the top, added favorite toggle, tightened home hero and browse filters, verified in live dev server |
 | 2026-04-30 | Claude Sonnet 4.6 | P0-001 thru P0-005 | Full directory structure, docker-compose, ASP.NET Core 8 scaffolded, EF Core migrations, Next.js 14 set up |
 | 2026-04-30 | Claude Sonnet 4.6 | P1-001 thru P1-014 | Full backend: WordData DTO, AIService (Claude+OpenAI fallback), CacheService (Redis), WordService (cache-first), all controllers, rate limiting, input sanitization, WordQueueProcessor, seed SQL |
 | 2026-04-30 | Claude Sonnet 4.6 | P2-001 thru P2-011 | Full frontend: lib/api.ts + types.ts, SearchBar with debounce, AudioPlayer, WordCard, home page, word detail SSR page, browse page, error/404 pages, skeleton loaders, dark mode, Noto Nastaliq font |

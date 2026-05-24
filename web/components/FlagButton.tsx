@@ -13,7 +13,13 @@ const REASONS = [
 
 type Reason = (typeof REASONS)[number]["value"];
 
-export default function FlagButton({ word }: { word: string }) {
+export default function FlagButton({
+  word,
+  variant = "subtle",
+}: {
+  word: string;
+  variant?: "subtle" | "pill";
+}) {
   const { accessToken } = useAuth();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<Reason>("translation");
@@ -37,12 +43,16 @@ export default function FlagButton({ word }: { word: string }) {
       <button
         onClick={() => setOpen(true)}
         aria-label="Report an error"
-        className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors min-h-[44px] px-2"
+        className={`inline-flex min-h-[44px] items-center gap-1.5 transition-colors ${
+          variant === "pill"
+            ? "rounded-full border border-gray-200 bg-white px-4 text-sm font-medium text-gray-600 hover:border-red-200 hover:text-red-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-red-900 dark:hover:text-red-300"
+            : "px-2 text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400"
+        }`}
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l1.664 9.914M3 3h18M3 3l9 9m9-9l-1.664 9.914M21 3l-9 9m0 0l-6.336 3.086M12 12l6.336 3.086M5.664 12.914L12 12" />
         </svg>
-        Report error
+        {variant === "pill" ? "Report" : "Report error"}
       </button>
 
       {open && (

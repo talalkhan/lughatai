@@ -54,7 +54,7 @@ export default function InstallPrompt() {
     <div
       role="dialog"
       aria-label="Install LughatAI app"
-      className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-80 z-40 bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 p-4 flex items-start gap-3"
+      className="fixed bottom-24 left-4 right-4 z-40 flex items-start gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-xl dark:border-gray-700 dark:bg-gray-900 sm:bottom-4 sm:left-auto sm:right-4 sm:w-80"
     >
       <img
         src="/icons/icon-192.png"

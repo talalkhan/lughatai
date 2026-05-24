@@ -20,7 +20,13 @@ function DifficultyBadge({ difficulty }: { difficulty?: string }) {
   );
 }
 
-export default function SearchBar({ autoFocus = false }: { autoFocus?: boolean }) {
+export default function SearchBar({
+  autoFocus = false,
+  variant = "hero",
+}: {
+  autoFocus?: boolean;
+  variant?: "hero" | "compact";
+}) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -100,8 +106,25 @@ export default function SearchBar({ autoFocus = false }: { autoFocus?: boolean }
     if (query.trim().length >= 2) navigate(query.trim());
   }
 
+  const compact = variant === "compact";
+  const wrapperClass = compact
+    ? "relative w-full"
+    : "relative w-full max-w-2xl mx-auto";
+  const inputClass = compact
+    ? "w-full px-4 py-3 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white/90 dark:bg-gray-900/90 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 pr-20 shadow-sm"
+    : "w-full px-5 py-4 text-base rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:border-indigo-500 dark:focus:border-indigo-400 pr-24";
+  const clearButtonClass = compact
+    ? "absolute right-12 p-2 text-gray-400 hover:text-gray-600 min-w-[40px] min-h-[40px] flex items-center justify-center"
+    : "absolute right-16 p-2 text-gray-400 hover:text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center";
+  const searchButtonClass = compact
+    ? "absolute right-2 px-3 py-2 min-h-[40px] min-w-[40px] bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors"
+    : "absolute right-2 px-4 py-2 min-h-[44px] min-w-[44px] bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium transition-colors";
+  const listClass = compact
+    ? "absolute z-50 w-full mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden"
+    : "absolute z-50 w-full mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl overflow-hidden";
+
   return (
-    <div className="relative w-full max-w-2xl mx-auto">
+    <div className={wrapperClass}>
       <form onSubmit={handleSubmit} role="search">
         <div className="relative flex items-center">
           <input
@@ -115,16 +138,14 @@ export default function SearchBar({ autoFocus = false }: { autoFocus?: boolean }
             placeholder="Search any English word…"
             aria-label="Search for a word"
             aria-autocomplete="list"
-            className="w-full px-5 py-4 text-base rounded-2xl border-2 border-gray-200 dark:border-gray-700
-                       bg-white dark:bg-gray-900 focus:outline-none focus:border-indigo-500
-                       dark:focus:border-indigo-400 pr-24"
+            className={inputClass}
             style={{ fontSize: "16px" }}
           />
           {query && (
             <button
               type="button"
               onClick={() => { setQuery(""); setResults([]); setOpen(false); inputRef.current?.focus(); }}
-              className="absolute right-16 p-2 text-gray-400 hover:text-gray-600 min-w-[44px] min-h-[44px] flex items-center justify-center"
+              className={clearButtonClass}
               aria-label="Clear search"
             >
               ✕
@@ -132,8 +153,7 @@ export default function SearchBar({ autoFocus = false }: { autoFocus?: boolean }
           )}
           <button
             type="submit"
-            className="absolute right-2 px-4 py-2 min-h-[44px] min-w-[44px] bg-indigo-600 hover:bg-indigo-700
-                       text-white rounded-xl text-sm font-medium transition-colors"
+            className={searchButtonClass}
             aria-label="Search"
           >
             →
@@ -144,8 +164,7 @@ export default function SearchBar({ autoFocus = false }: { autoFocus?: boolean }
       {open && (
         <ul
           role="listbox"
-          className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-900 border border-gray-200
-                     dark:border-gray-700 rounded-2xl shadow-xl overflow-hidden"
+          className={listClass}
         >
           {loading ? (
             /* Searching skeleton */

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import AudioPlayer from "@/components/AudioPlayer";
+import FavoriteToggle from "@/components/FavoriteToggle";
 import FlagButton from "@/components/FlagButton";
 import WordCacheWriter from "@/components/WordCacheWriter";
 import { getWord } from "@/lib/api";
@@ -216,6 +217,7 @@ export default async function WordDetailPage({ params }: Props) {
   const urdu = word.script_variants?.nastaliq;
   const romanUrdu = word.script_variants?.roman_urdu;
   const difficulty = word.learning?.difficulty;
+  const leadMeaning = word.meanings?.[0];
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -233,64 +235,110 @@ export default async function WordDetailPage({ params }: Props) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Word header */}
-        <header className="mb-8">
-          <div className="flex items-center gap-3 flex-wrap mb-2">
-            {word.learning?.emoji && <span className="text-4xl">{word.learning.emoji}</span>}
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 capitalize">
-              {word.word}
-            </h1>
-            {difficulty && (
-              <DiffBadge
-                label={difficulty}
-                color={DIFFICULTY_COLORS[difficulty] ?? "bg-gray-100 text-gray-700"}
-              />
-            )}
-            {word.learning?.cefr_level && (
-              <DiffBadge
-                label={word.learning.cefr_level}
-                color="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-              />
-            )}
+      <main className="mx-auto max-w-5xl px-4 py-6 sm:py-8">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/"
+              className="inline-flex min-h-[44px] items-center rounded-full border border-gray-200 bg-white px-4 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+            >
+              ← Search
+            </Link>
+            <Link
+              href="/browse"
+              className="inline-flex min-h-[44px] items-center rounded-full border border-gray-200 bg-white px-4 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
+            >
+              Browse
+            </Link>
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <FavoriteToggle word={word.word} />
+            <FlagButton word={word.word} variant="pill" />
+          </div>
+        </div>
 
-          {word.phonetic?.ipa && (
-            <p className="text-gray-500 dark:text-gray-400 text-sm mb-1">
-              {word.phonetic.ipa}
-              {word.phonetic.syllables && ` · ${word.phonetic.syllables}`}
+        <header className="mb-8 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <section className="rounded-[2rem] border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-900 sm:p-7">
+            <div className="flex flex-wrap items-start gap-4">
+              {word.learning?.emoji && (
+                <span className="flex h-16 w-16 items-center justify-center rounded-3xl bg-indigo-50 text-4xl dark:bg-indigo-950/60">
+                  {word.learning.emoji}
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-4xl font-bold capitalize tracking-tight text-gray-950 dark:text-white">
+                    {word.word}
+                  </h1>
+                  {difficulty && (
+                    <DiffBadge
+                      label={difficulty}
+                      color={DIFFICULTY_COLORS[difficulty] ?? "bg-gray-100 text-gray-700"}
+                    />
+                  )}
+                  {word.learning?.cefr_level && (
+                    <DiffBadge
+                      label={word.learning.cefr_level}
+                      color="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                    />
+                  )}
+                </div>
+
+                {word.phonetic?.ipa && (
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                    {word.phonetic.ipa}
+                    {word.phonetic.syllables && ` · ${word.phonetic.syllables}`}
+                  </p>
+                )}
+
+                {leadMeaning?.definition_en && (
+                  <p className="mt-4 max-w-2xl text-base text-gray-700 dark:text-gray-300">
+                    {leadMeaning.definition_en}
+                  </p>
+                )}
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <AudioPlayer url={word.audio?.en_url} lang="EN" />
+                  <AudioPlayer url={word.audio?.ur_url} lang="UR" />
+                </div>
+
+                {word.learning?.contexts && word.learning.contexts.length > 0 && (
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {word.learning.contexts.map((ctx) => (
+                      <Link
+                        key={ctx}
+                        href={`/browse?context=${ctx}`}
+                        className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 transition-colors hover:bg-indigo-50 hover:text-indigo-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-indigo-950 dark:hover:text-indigo-300"
+                      >
+                        {ctx}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <aside className="rounded-[2rem] border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-sky-50 p-6 shadow-sm dark:border-indigo-900/50 dark:from-indigo-950/50 dark:via-gray-900 dark:to-slate-950 sm:p-7">
+            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-indigo-600 dark:text-indigo-300">
+              Urdu rendering
             </p>
-          )}
-
-          <div className="flex gap-2 mb-4">
-            <AudioPlayer url={word.audio?.en_url} lang="EN" />
-            <AudioPlayer url={word.audio?.ur_url} lang="UR" />
-          </div>
-
-          {urdu && (
-            <div className="mt-3">
-              <p dir="rtl" lang="ur" className="font-nastaliq text-4xl text-indigo-700 dark:text-indigo-300">
+            {urdu && (
+              <p dir="rtl" lang="ur" className="mt-6 font-nastaliq text-5xl text-indigo-700 dark:text-indigo-300 lg:text-right">
                 {urdu}
               </p>
-              {romanUrdu && (
-                <p className="text-base text-gray-500 dark:text-gray-400 italic mt-1">{romanUrdu}</p>
-              )}
-            </div>
-          )}
-
-          {word.learning?.contexts && word.learning.contexts.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              {word.learning.contexts.map((ctx) => (
-                <Link
-                  key={ctx}
-                  href={`/browse?context=${ctx}`}
-                  className="text-xs px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-indigo-50 dark:hover:bg-indigo-950 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
-                >
-                  {ctx}
-                </Link>
-              ))}
-            </div>
-          )}
+            )}
+            {romanUrdu && (
+              <p className="mt-4 text-lg italic text-gray-500 dark:text-gray-400 lg:text-right">
+                {romanUrdu}
+              </p>
+            )}
+            {leadMeaning?.translations?.primary_roman && leadMeaning.translations.primary_roman !== romanUrdu && (
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 lg:text-right">
+                Primary translation: {leadMeaning.translations.primary_roman}
+              </p>
+            )}
+          </aside>
         </header>
 
         {/* Meanings */}
@@ -450,16 +498,6 @@ export default async function WordDetailPage({ params }: Props) {
             )}
           </section>
         )}
-
-        <div className="flex items-center justify-between mt-8">
-          <Link
-            href="/"
-            className="text-indigo-600 dark:text-indigo-400 hover:underline text-sm"
-          >
-            ← Back to search
-          </Link>
-          <FlagButton word={word.word} />
-        </div>
       </main>
     </>
   );

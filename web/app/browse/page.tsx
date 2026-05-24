@@ -9,8 +9,7 @@ export const metadata = {
 
 export default function BrowsePage() {
   return (
-    <main className="max-w-4xl mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Browse Words</h1>
+    <main className="mx-auto max-w-6xl px-4 py-6 sm:py-8">
       <Suspense fallback={
         <div className="grid sm:grid-cols-2 gap-4">
           {Array.from({ length: 6 }).map((_, i) => <WordCardSkeleton key={i} />)}
