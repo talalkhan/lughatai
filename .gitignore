@@ -55,3 +55,6 @@ scripts/words/processed/
 
 # Misc log files
 api_log.txt
+
+# Local verification output
+.build-verify/

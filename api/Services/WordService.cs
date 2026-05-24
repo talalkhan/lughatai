@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using LughatAI.Api.BackgroundJobs;
 using LughatAI.Api.Data;
 using LughatAI.Api.Models;
 
@@ -17,6 +18,7 @@ public class WordService : IWordService
     private readonly IWordRepository _repo;
     private readonly IWordAIService _ai;
     private readonly IWordNormalizer _normalizer;
+    private readonly IWordEnrichmentQueue _enrichmentQueue;
     private readonly ILogger<WordService> _logger;
 
     public WordService(
@@ -24,12 +26,14 @@ public class WordService : IWordService
         IWordRepository repo,
         IWordAIService ai,
         IWordNormalizer normalizer,
+        IWordEnrichmentQueue enrichmentQueue,
         ILogger<WordService> logger)
     {
         _cache = cache;
         _repo = repo;
         _ai = ai;
         _normalizer = normalizer;
+        _enrichmentQueue = enrichmentQueue;
         _logger = logger;
     }
 
@@ -75,6 +79,9 @@ public class WordService : IWordService
                 }
             }
         }
+
+        if (WordEnrichmentProcessor.NeedsEnrichment(result))
+            _enrichmentQueue.TryEnqueue(word);
 
         // Record history for authenticated users (fire-and-forget)
         if (result != null && userId.HasValue)

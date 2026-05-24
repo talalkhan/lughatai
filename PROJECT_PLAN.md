@@ -10,21 +10,23 @@
 ```
 Last updated  : 2026-05-23
 Updated by    : Codex GPT-5
-Active phase  : UI polish / monetization prep
-Current task  : UI polish pass complete — shared shell, top-of-page word actions, favorites save toggle, denser home/browse framing
-Next task     : P6-001 (Stripe Checkout) — resume when ready
+Active phase  : Data pipeline hardening
+Current task  : Batch pipeline hardening complete — P3 core schema path, on-demand enrichment queue, atomic queue claiming, sharded backups
+Next task     : Resume P3 OpenAI batches and collect results with the new core-mode flow
 ```
 
 ### Batch Pipeline State (2026-05-23)
 
-- 340,887 words loaded into word_queue (P1:1,931 P2:14,376 P3:324,580)
-- 2,382 definitions already in word_definitions (from live processor + test batch)
-- OpenAI Batch API jobs in flight:
-  - batch_6a122d4047a4819082966cc79fc60fb8 — 14,000 words (P1+P2), in_progress
-  - batch_6a122db6c9888190924ba7586182a124 — 17 words (P1+P2), completed (needs collect)
+- 341,142 words in word_queue total
+  - done: 36,196
+  - processing: 322
+  - pending: 304,621
+  - failed: 3
+- `word_definitions` contains ~36K definitions locally
 - Tracking file: scripts/words/processed/openai_batches.json
-- **When batches complete:** run `.\scripts\batch_collect_openai.ps1` then `.\scripts\db_backup.ps1`
-- **P3 words (324K):** deferred — add $200+ OpenAI credit and run `.\scripts\batch_submit_openai.ps1`
+- **P3 words now default to core-mode generation** in both the hosted queue processor and OpenAI batch submitter
+- **Core hits now self-enrich in the background** after a real user lookup
+- **Backups are now sharded** as `data/word_definitions_backup.partNNN.sql.gz` to stay under GitHub's file limit
 
 ### At-a-Glance Progress
 
@@ -1162,6 +1164,7 @@ Next task     : P6-001 (Stripe Checkout) — resume when ready
 
 | Date | Agent | Task | Notes |
 |------|-------|------|-------|
+| 2026-05-23 | Codex GPT-5 | Batch pipeline hardening | Added `core` vs `enriched` generation stages, background enrichment after real user lookup, atomic queue claiming with `UPDATE ... RETURNING`, stage-aware OpenAI batch submit/collect flow, and sharded backup/restore scripts |
 | 2026-05-23 | Codex GPT-5 | UI polish pass | Added shared app shell with desktop header + mobile bottom nav, moved word-detail navigation/actions to the top, added favorite toggle, tightened home hero and browse filters, verified in live dev server |
 | 2026-04-30 | Claude Sonnet 4.6 | P0-001 thru P0-005 | Full directory structure, docker-compose, ASP.NET Core 8 scaffolded, EF Core migrations, Next.js 14 set up |
 | 2026-04-30 | Claude Sonnet 4.6 | P1-001 thru P1-014 | Full backend: WordData DTO, AIService (Claude+OpenAI fallback), CacheService (Redis), WordService (cache-first), all controllers, rate limiting, input sanitization, WordQueueProcessor, seed SQL |

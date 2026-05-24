@@ -180,7 +180,7 @@ do {
                 foreach ($line in [System.IO.File]::ReadLines($errorPath)) {
                     if ($line -eq '') { continue }
                     $customId = ([System.Text.Json.JsonDocument]::Parse($line)).RootElement.GetProperty('custom_id').GetString()
-                    if ($customId -match '^wq-(\d+)$') { $erroredWordIds += [int]$Matches[1] }
+                    if ($customId -match '^wq-(\d+)(?:-(core|enriched))?$') { $erroredWordIds += [int]$Matches[1] }
                 }
                 Write-Warn "$($erroredWordIds.Count) requests failed in this batch"
             } catch {
@@ -221,9 +221,10 @@ do {
                 $customId   = $root.GetProperty('custom_id').GetString()
                 $statusCode = $root.GetProperty('response').GetProperty('status_code').GetInt32()
 
-                # Extract word_queue ID from custom_id "wq-{id}"
-                if (-not ($customId -match '^wq-(\d+)$')) { $skipCount++; continue }
+                # Extract word_queue ID and stage from custom_id "wq-{id}-{stage}"
+                if (-not ($customId -match '^wq-(\d+)(?:-(core|enriched))?$')) { $skipCount++; continue }
                 $wqId = [int]$Matches[1]
+                $stage = if ($Matches[2]) { $Matches[2] } else { "enriched" }
 
                 if ($statusCode -ne 200) {
                     $errorCount++
@@ -240,9 +241,15 @@ do {
                 if ($jsonStart -lt 0 -or $jsonEnd -le $jsonStart) { $errorCount++; continue }
                 $wordJson  = $content.Substring($jsonStart, $jsonEnd - $jsonStart + 1)
 
-                # Quick validate it's parseable JSON
+                # Quick validate it's parseable JSON and stamp the generation stage.
                 try {
-                    [void][System.Text.Json.JsonDocument]::Parse($wordJson)
+                    $wordNode = [System.Text.Json.Nodes.JsonNode]::Parse($wordJson)
+                    if ($null -eq $wordNode) { throw "Parsed JSON node was null" }
+                    if ($null -eq $wordNode["_meta"]) {
+                        $wordNode["_meta"] = [System.Text.Json.Nodes.JsonObject]::new()
+                    }
+                    $wordNode["_meta"]["stage"] = $stage
+                    $wordJson = $wordNode.ToJsonString()
                 } catch {
                     $errorCount++
                     continue

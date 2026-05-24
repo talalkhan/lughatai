@@ -1,0 +1,17 @@
+CORE MODE ADDENDUM FOR PRIORITY-3 WORDS:
+
+- Return the SAME JSON schema, but keep the entry focused on essential dictionary substance.
+- Include every materially distinct common meaning needed for a useful English-to-Urdu dictionary entry.
+- Include enough examples to clarify the included meanings. Do not pad with repetitive examples.
+- Include translations, definitions, phonetic data, and learning metadata as usual.
+- Synonyms, antonyms, collocations, and confusables should be included only when they materially improve understanding.
+- Leave enrichment-only sections empty or null unless they are truly indispensable:
+  - etymology
+  - word_family
+  - related_words
+  - memory_tip
+  - urdu_poetry
+  - urdu_proverb
+  - islamic_reference
+- In `_meta.stage`, set the value to `"core"`.
+- Do not impose arbitrary numeric caps on meanings or examples. Keep the entry concise by excluding non-essential enrichment, not by truncating essential content.

@@ -307,12 +307,28 @@ public class WordRepository : IWordRepository
     {
         using var conn = Connection();
         var sql = """
-            SELECT id, word, status, priority, attempts, error_message as errormessage, created_at as createdat, updated_at as updatedat
-            FROM word_queue
-            WHERE status = 'pending'
+            WITH next_batch AS (
+                SELECT id
+                FROM word_queue
+                WHERE status = 'pending'
+                ORDER BY priority ASC, id ASC
+                LIMIT @count
+                FOR UPDATE SKIP LOCKED
+            ),
+            claimed AS (
+                UPDATE word_queue w
+                SET status = 'processing',
+                    updated_at = now()
+                FROM next_batch nb
+                WHERE w.id = nb.id
+                RETURNING w.id, w.word, w.status, w.priority, w.attempts,
+                          w.error_message as errormessage,
+                          w.created_at as createdat,
+                          w.updated_at as updatedat
+            )
+            SELECT *
+            FROM claimed
             ORDER BY priority ASC, id ASC
-            LIMIT @count
-            FOR UPDATE SKIP LOCKED
             """;
         return await conn.QueryAsync<WordQueue>(sql, new { count });
     }

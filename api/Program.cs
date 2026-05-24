@@ -76,7 +76,10 @@ try
     builder.Services.AddScoped<IAuthService, AuthService>();
 
     // Background job
+    builder.Services.AddSingleton<WordEnrichmentProcessor>();
+    builder.Services.AddSingleton<IWordEnrichmentQueue>(sp => sp.GetRequiredService<WordEnrichmentProcessor>());
     builder.Services.AddHostedService<WordQueueProcessor>();
+    builder.Services.AddHostedService(sp => sp.GetRequiredService<WordEnrichmentProcessor>());
 
     // CORS
     var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()

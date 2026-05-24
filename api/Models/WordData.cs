@@ -310,6 +310,9 @@ public class MetaInfo
     [JsonPropertyName("model")]
     public string? Model { get; set; }
 
+    [JsonPropertyName("stage")]
+    public string? Stage { get; set; }
+
     [JsonPropertyName("version")]
     public string? Version { get; set; }
 

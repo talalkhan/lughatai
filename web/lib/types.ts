@@ -120,6 +120,7 @@ export interface MetaInfo {
   generated_by?: string;
   generated_at?: string;
   model?: string;
+  stage?: string;
   version?: string;
   reviewed?: boolean;
 }

@@ -13,7 +13,7 @@ public class AIServiceException : Exception
 
 public interface IWordAIService
 {
-    Task<WordData> GenerateWordAsync(string word, bool usePremium = false);
+    Task<WordData> GenerateWordAsync(string word, bool usePremium = false, WordGenerationStage stage = WordGenerationStage.Enriched);
     /// <summary>
     /// Given a Roman Urdu query (e.g. "sukoon"), returns the English word it corresponds to.
     /// Returns null if the AI cannot interpret it.
@@ -27,6 +27,7 @@ public class AIService : IWordAIService
     private readonly IConfiguration _config;
     private readonly ILogger<AIService> _logger;
     private readonly string _systemPrompt;
+    private readonly string _corePromptAddendum;
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -41,13 +42,16 @@ public class AIService : IWordAIService
 
         var promptPath = Path.Combine(AppContext.BaseDirectory, "Prompts", "ai_system_prompt.txt");
         _systemPrompt = File.ReadAllText(promptPath);
+        var corePromptPath = Path.Combine(AppContext.BaseDirectory, "Prompts", "ai_core_prompt_addendum.txt");
+        _corePromptAddendum = File.Exists(corePromptPath) ? File.ReadAllText(corePromptPath) : string.Empty;
     }
 
-    public async Task<WordData> GenerateWordAsync(string word, bool usePremium = false)
+    public async Task<WordData> GenerateWordAsync(string word, bool usePremium = false, WordGenerationStage stage = WordGenerationStage.Enriched)
     {
         var model = usePremium
             ? _config["AI:LiveModel"] ?? "claude-sonnet-4-6"
             : _config["AI:BatchModel"] ?? "claude-haiku-4-5-20251001";
+        var prompt = BuildPrompt(stage);
 
         // If the configured batch model is an OpenAI model (gpt-*), route directly
         // to OpenAI — no Claude attempt, no fallback dance.
@@ -55,12 +59,8 @@ public class AIService : IWordAIService
         {
             try
             {
-                var result = await CallOpenAIAsync(word, model);
-                result.Meta ??= new MetaInfo();
-                result.Meta.GeneratedBy = "openai";
-                result.Meta.GeneratedAt = DateTime.UtcNow.ToString("O");
-                result.Meta.Model = model;
-                return result;
+                var result = await CallOpenAIAsync(word, prompt, model);
+                return StampMeta(result, model, "openai", stage);
             }
             catch (Exception ex)
             {
@@ -72,12 +72,8 @@ public class AIService : IWordAIService
         // Claude path
         try
         {
-            var result = await CallClaudeAsync(word, model);
-            result.Meta ??= new MetaInfo();
-            result.Meta.GeneratedBy = "claude";
-            result.Meta.GeneratedAt = DateTime.UtcNow.ToString("O");
-            result.Meta.Model = model;
-            return result;
+            var result = await CallClaudeAsync(word, prompt, model);
+            return StampMeta(result, model, "claude", stage);
         }
         catch (AIServiceException ex) when (ex.Message.StartsWith("429:"))
         {
@@ -101,12 +97,8 @@ public class AIService : IWordAIService
             _logger.LogError(claudeEx, "Claude failed for word '{Word}', attempting OpenAI fallback", word);
             try
             {
-                var result = await CallOpenAIAsync(word, "gpt-4o-mini");
-                result.Meta ??= new MetaInfo();
-                result.Meta.GeneratedBy = "openai";
-                result.Meta.GeneratedAt = DateTime.UtcNow.ToString("O");
-                result.Meta.Model = "gpt-4o-mini";
-                return result;
+                var result = await CallOpenAIAsync(word, prompt, "gpt-4o-mini");
+                return StampMeta(result, "gpt-4o-mini", "openai", stage);
             }
             catch (Exception openAiEx)
             {
@@ -116,7 +108,7 @@ public class AIService : IWordAIService
         }
     }
 
-    private async Task<WordData> CallClaudeAsync(string word, string model)
+    private async Task<WordData> CallClaudeAsync(string word, string prompt, string model)
     {
         var apiKey = _config["AI:AnthropicApiKey"]
             ?? throw new AIServiceException("Anthropic API key not configured");
@@ -125,7 +117,7 @@ public class AIService : IWordAIService
         {
             model,
             max_tokens = 8192,   // 8192 for rich Urdu content — common words like "good"/"time" fill 4096+
-            system = _systemPrompt,
+            system = prompt,
             messages = new[] { new { role = "user", content = word } }
         };
 
@@ -184,7 +176,7 @@ public class AIService : IWordAIService
         throw new AIServiceException("Claude returned 529 after retry");
     }
 
-    private async Task<WordData> CallOpenAIAsync(string word, string model = "gpt-4o-mini")
+    private async Task<WordData> CallOpenAIAsync(string word, string prompt, string model = "gpt-4o-mini")
     {
         var apiKey = _config["AI:OpenAIApiKey"]
             ?? throw new AIServiceException("OpenAI API key not configured");
@@ -195,7 +187,7 @@ public class AIService : IWordAIService
             max_tokens = 8192,   // match Claude budget; GPT-4o-mini supports up to 16384
             messages = new[]
             {
-                new { role = "system", content = _systemPrompt },
+                new { role = "system", content = prompt },
                 new { role = "user", content = word }
             }
         };
@@ -226,6 +218,25 @@ public class AIService : IWordAIService
         }
 
         return ParseWordData(text, word);
+    }
+
+    private string BuildPrompt(WordGenerationStage stage)
+    {
+        if (stage != WordGenerationStage.Core || string.IsNullOrWhiteSpace(_corePromptAddendum))
+            return _systemPrompt;
+
+        return $"{_systemPrompt}{Environment.NewLine}{Environment.NewLine}{_corePromptAddendum}";
+    }
+
+    private static WordData StampMeta(WordData data, string model, string generatedBy, WordGenerationStage stage)
+    {
+        data.Meta ??= new MetaInfo();
+        data.Meta.GeneratedBy = generatedBy;
+        data.Meta.GeneratedAt = DateTime.UtcNow.ToString("O");
+        data.Meta.Model = model;
+        data.Meta.Stage = stage.ToMetaValue();
+        data.Meta.Version ??= "1.0";
+        return data;
     }
 
     public async Task<string?> InterpretRomanUrduAsync(string romanUrdu)

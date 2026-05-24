@@ -1,8 +1,8 @@
 # =============================================================================
 # scripts/db_restore.ps1
 #
-# Restores word_definitions from data/word_definitions_backup.sql into the
-# running Postgres container.  Safe to run on a fresh DB or an existing one.
+# Restores word_definitions from sharded or legacy compressed SQL backups.
+# Safe to run on a fresh DB or an existing one.
 #
 # Usage:
 #   .\scripts\db_restore.ps1           # prompts before overwriting existing data
@@ -18,27 +18,58 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$RepoRoot   = Split-Path $PSScriptRoot -Parent
-$BackupFile = Join-Path $RepoRoot "data\word_definitions_backup.sql.gz"
+$RepoRoot = Split-Path $PSScriptRoot -Parent
+$DataDir = Join-Path $RepoRoot "data"
+$BackupStem = "word_definitions_backup"
+$LegacyBackupFile = Join-Path $DataDir "$BackupStem.sql.gz"
 Add-Type -AssemblyName "System.IO.Compression"
+
+function Resolve-BackupFiles {
+    $parts = Get-ChildItem -Path $DataDir -Filter "$BackupStem.part*.sql.gz" -ErrorAction SilentlyContinue |
+        Sort-Object Name
+    if ($parts.Count -gt 0) {
+        return ,$parts
+    }
+
+    if (Test-Path $LegacyBackupFile) {
+        return ,(Get-Item $LegacyBackupFile)
+    }
+
+    return @()
+}
+
+function New-DockerPsqlProcess {
+    $psi = [System.Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName = "docker"
+    $psi.Arguments = "compose exec -T postgres psql -U postgres -d lughatai -q"
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardInput = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+    $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
+    return [System.Diagnostics.Process]::Start($psi)
+}
 
 Write-Host ""
 Write-Host "LughatAI — Database Restore" -ForegroundColor Cyan
 Write-Host "===========================" -ForegroundColor Cyan
 Write-Host ""
 
-# ── 1. Check backup file exists ───────────────────────────────────────────────
-if (-not (Test-Path $BackupFile)) {
-    Write-Host "Backup file not found: $BackupFile" -ForegroundColor Red
+$backupFiles = Resolve-BackupFiles
+if ($backupFiles.Count -eq 0) {
+    Write-Host "Backup file not found under $DataDir" -ForegroundColor Red
     Write-Host "Pull the latest from GitHub first:" -ForegroundColor Yellow
     Write-Host "  git pull" -ForegroundColor Yellow
     exit 1
 }
 
-$fileSize = [math]::Round((Get-Item $BackupFile).Length / 1KB, 1)
-Write-Host "  Backup file: $BackupFile (${fileSize} KB)" -ForegroundColor Green
+$totalSizeKb = [math]::Round((($backupFiles | Measure-Object Length -Sum).Sum) / 1KB, 1)
+Write-Host "  Backup part(s): $($backupFiles.Count) (${totalSizeKb} KB compressed)" -ForegroundColor Green
+foreach ($file in $backupFiles) {
+    Write-Host ("    {0}" -f $file.Name) -ForegroundColor Gray
+}
 
-# ── 2. Check Docker is running ───────────────────────────────────────────────
 Write-Host "Checking Docker..." -ForegroundColor Gray
 $containerRunning = docker compose ps --status running --services 2>$null | Select-String "postgres"
 if (-not $containerRunning) {
@@ -48,7 +79,6 @@ if (-not $containerRunning) {
 }
 Write-Host "  Postgres container: OK" -ForegroundColor Green
 
-# ── 3. Check existing data ────────────────────────────────────────────────────
 $existing = (docker compose exec -T postgres psql -U postgres -d lughatai -t -c "SELECT COUNT(*) FROM word_definitions;" 2>$null) -join "" | ForEach-Object { $_.Trim() }
 Write-Host "  Words currently in DB: $existing" -ForegroundColor Green
 Write-Host ""
@@ -66,31 +96,47 @@ if ([int]$existing -gt 0) {
         Write-Host ""
     }
 
-    # Truncate existing data and reset the ID sequence
     Write-Host "Clearing existing word_definitions..." -ForegroundColor Gray
     docker compose exec -T postgres psql -U postgres -d lughatai -c `
         "TRUNCATE TABLE word_definitions RESTART IDENTITY CASCADE;" | Out-Null
     Write-Host "  Cleared." -ForegroundColor Green
 }
 
-# ── 4. Run the restore ────────────────────────────────────────────────────────
-Write-Host "Restoring from $BackupFile..." -ForegroundColor Gray
+Write-Host "Restoring compressed SQL stream..." -ForegroundColor Gray
+$psql = New-DockerPsqlProcess
+$stdin = $psql.StandardInput
+$buffer = New-Object char[] 16384
 
-# Decompress .sql.gz then pipe into psql
-$fs     = [System.IO.File]::OpenRead($BackupFile)
-$gz     = [System.IO.Compression.GZipStream]::new($fs, [System.IO.Compression.CompressionMode]::Decompress)
-$reader = [System.IO.StreamReader]::new($gz, [System.Text.Encoding]::UTF8)
-$sql    = $reader.ReadToEnd()
-$reader.Close(); $gz.Close(); $fs.Close()
+foreach ($file in $backupFiles) {
+    Write-Host ("  Replaying {0}..." -f $file.Name) -ForegroundColor Gray
+    $fileStream = [System.IO.File]::OpenRead($file.FullName)
+    $gzipStream = [System.IO.Compression.GZipStream]::new($fileStream, [System.IO.Compression.CompressionMode]::Decompress)
+    $reader = [System.IO.StreamReader]::new($gzipStream, [System.Text.Encoding]::UTF8)
+    try {
+        while (($read = $reader.Read($buffer, 0, $buffer.Length)) -gt 0) {
+            $stdin.Write($buffer, 0, $read)
+        }
+    } finally {
+        $reader.Dispose()
+    }
+}
 
-$sql | docker compose exec -T postgres psql -U postgres -d lughatai -q
+$stdin.Close()
+$stdout = $psql.StandardOutput.ReadToEnd()
+$stderr = $psql.StandardError.ReadToEnd()
+$psql.WaitForExit()
 
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Restore failed. Check the output above." -ForegroundColor Red
+if ($psql.ExitCode -ne 0) {
+    Write-Host "Restore failed." -ForegroundColor Red
+    if (-not [string]::IsNullOrWhiteSpace($stderr)) {
+        Write-Host $stderr -ForegroundColor Red
+    }
+    if (-not [string]::IsNullOrWhiteSpace($stdout)) {
+        Write-Host $stdout -ForegroundColor DarkRed
+    }
     exit 1
 }
 
-# ── 5. Verify ─────────────────────────────────────────────────────────────────
 $restored = (docker compose exec -T postgres psql -U postgres -d lughatai -t -c "SELECT COUNT(*) FROM word_definitions;" 2>$null) -join "" | ForEach-Object { $_.Trim() }
 Write-Host ""
 Write-Host "Restore complete: $restored words in database." -ForegroundColor Green

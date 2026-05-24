@@ -82,15 +82,19 @@ public class WordQueueProcessor : BackgroundService
         await _semaphore.WaitAsync(ct);
         try
         {
-            await repo.SetQueueStatusAsync(id, "processing");
+            var stage = priority >= 3 ? WordGenerationStage.Core : WordGenerationStage.Enriched;
 
-            // Batch processor always uses Haiku — fast, high rate limits, low cost.
-            // Sonnet is reserved for live user lookups (one at a time, no rate issue).
-            var data = await ai.GenerateWordAsync(word, usePremium: false);
+            // Priority 3 gets a lean core entry first; higher-priority words keep
+            // the richer full schema so common vocabulary stays best-in-class.
+            var data = await ai.GenerateWordAsync(word, usePremium: false, stage: stage);
             await repo.SaveWordAsync(word, data);
             await repo.SetQueueStatusAsync(id, "done");
 
-            _logger.LogInformation("Processed '{Word}' (batch model: {Model})", word, _config["AI:BatchModel"] ?? "default");
+            _logger.LogInformation(
+                "Processed '{Word}' (batch model: {Model}, stage: {Stage})",
+                word,
+                _config["AI:BatchModel"] ?? "default",
+                stage.ToMetaValue());
         }
         catch (AIServiceException ex) when (ex.Message.Contains("429"))
         {

@@ -46,6 +46,9 @@ param(
     # Path to the AI system prompt
     [string]$PromptFile = (Join-Path $PSScriptRoot "..\api\Prompts\ai_system_prompt.txt"),
 
+    # Extra instructions for lean core entries (applied automatically to P3+ words)
+    [string]$CorePromptAddendumFile = (Join-Path $PSScriptRoot "..\api\Prompts\ai_core_prompt_addendum.txt"),
+
     # Temp directory for JSONL files (can be large — ~90 MB each)
     [string]$TempDir = (Join-Path $PSScriptRoot "words\processed\batch_temp"),
 
@@ -57,6 +60,9 @@ param(
 
     # Pause submission if estimated remaining OpenAI credit drops below this (USD)
     [double]$MinBalanceUsd = 2.0,
+
+    # Priority tier that should switch to core-mode generation
+    [int]$CoreFromPriority = 3,
 
     # Submit one batch then stop — for testing the full pipeline
     [switch]$TestOne
@@ -86,11 +92,16 @@ if (-not (Test-Path $SettingsFile)) {
 if (-not (Test-Path $PromptFile)) {
     Write-Err "Prompt file not found: $PromptFile"; exit 1
 }
+if (-not (Test-Path $CorePromptAddendumFile)) {
+    Write-Err "Core prompt addendum file not found: $CorePromptAddendumFile"; exit 1
+}
 
 $settings     = Get-Content $SettingsFile -Encoding UTF8 | ConvertFrom-Json
 $openAiKey    = $settings.AI.OpenAIApiKey
 # Use .NET ReadAllText — avoids PowerShell ETS properties that corrupt ConvertTo-Json
-$systemPrompt = [System.IO.File]::ReadAllText($PromptFile, [System.Text.Encoding]::UTF8)
+$systemPrompt     = [System.IO.File]::ReadAllText($PromptFile, [System.Text.Encoding]::UTF8)
+$coreAddendum     = [System.IO.File]::ReadAllText($CorePromptAddendumFile, [System.Text.Encoding]::UTF8)
+$coreSystemPrompt = $systemPrompt + [Environment]::NewLine + [Environment]::NewLine + $coreAddendum
 
 if ([string]::IsNullOrWhiteSpace($openAiKey) -or $openAiKey -eq "YOUR_KEY") {
     Write-Err "OpenAI API key not configured in $SettingsFile"; exit 1
@@ -99,6 +110,7 @@ if ([string]::IsNullOrWhiteSpace($openAiKey) -or $openAiKey -eq "YOUR_KEY") {
 Write-Info "Model:          $Model"
 Write-Info "Max tokens:     $MaxTokens"
 Write-Info "Per batch file: $RequestsPerBatch words"
+Write-Info "Core threshold: P$CoreFromPriority+ -> core schema"
 
 # --- Step 2: fetch pending words from DB -------------------------------------
 
@@ -108,7 +120,7 @@ $priorityFilter = if ($MaxPriority -gt 0) { " AND priority <= $MaxPriority" } el
 # Always cap the fetch to avoid piping huge result sets through Docker.
 # Default cap = enough words for all batches we'll submit this run.
 $fetchLimit = if ($LimitWords -gt 0) { $LimitWords } else { $RequestsPerBatch }
-$sql = "SELECT id, word FROM word_queue WHERE status='pending'$priorityFilter ORDER BY priority ASC, id ASC LIMIT $fetchLimit"
+$sql = "SELECT id, word, priority FROM word_queue WHERE status='pending'$priorityFilter ORDER BY priority ASC, id ASC LIMIT $fetchLimit"
 if ($MaxPriority -gt 0) { Write-Info "Priority filter: P1 to P$MaxPriority only" }
 
 Write-Info "Querying word_queue..."
@@ -122,9 +134,9 @@ $words = @()
 foreach ($row in $rawRows) {
     $row = $row.Trim()
     if ($row -eq '') { continue }
-    $parts = $row -split "`t", 2
-    if ($parts.Count -eq 2 -and $parts[0] -match '^\d+$') {
-        $words += [PSCustomObject]@{ Id = [int]$parts[0]; Word = $parts[1] }
+    $parts = $row -split "`t", 3
+    if ($parts.Count -eq 3 -and $parts[0] -match '^\d+$' -and $parts[2] -match '^\d+$') {
+        $words += [PSCustomObject]@{ Id = [int]$parts[0]; Word = $parts[1]; Priority = [int]$parts[2] }
     }
 }
 
@@ -145,14 +157,20 @@ if (-not (Test-Path $TempDir)) {
 
 # JSON-escape the system prompt for embedding in JSONL.
 # ConvertTo-Json serializes a string as a quoted JSON string; we strip the outer quotes.
-$promptJson    = $systemPrompt | ConvertTo-Json -Compress -Depth 1
-$promptEscaped = $promptJson.Substring(1, $promptJson.Length - 2)
+$fullPromptJson    = $systemPrompt | ConvertTo-Json -Compress -Depth 1
+$fullPromptEscaped = $fullPromptJson.Substring(1, $fullPromptJson.Length - 2)
+$corePromptJson    = $coreSystemPrompt | ConvertTo-Json -Compress -Depth 1
+$corePromptEscaped = $corePromptJson.Substring(1, $corePromptJson.Length - 2)
 
 # Pre-build the request template prefix/suffix to avoid repeating the prompt each time
-$reqPrefix = "{`"custom_id`":`"wq-"
-# We'll build each line as: {prefix}{id}`",{middle}{word-escaped}{suffix}
-$reqMiddle  = "`",`"method`":`"POST`",`"url`":`"/v1/chat/completions`",`"body`":{`"model`":`"$Model`",`"max_tokens`":$MaxTokens,`"messages`":[{`"role`":`"system`",`"content`":`"$promptEscaped`"},{`"role`":`"user`",`"content`":`""
+$reqPrefix = "{`"custom_id`":`""
+# We'll build each line as: {prefix}{customId}`",{middle}{word-escaped}{suffix}
+$reqMiddleTemplate  = "`",`"method`":`"POST`",`"url`":`"/v1/chat/completions`",`"body`":{`"model`":`"$Model`",`"max_tokens`":$MaxTokens,`"messages`":[{`"role`":`"system`",`"content`":`"{0}`"},{`"role`":`"user`",`"content`":`""
 $reqSuffix  = "`"}]}}"
+$reqMiddleByStage = @{
+    enriched = [string]::Format($reqMiddleTemplate, $fullPromptEscaped)
+    core     = [string]::Format($reqMiddleTemplate, $corePromptEscaped)
+}
 
 # Split words into batches
 $batchCount = [Math]::Ceiling($words.Count / $RequestsPerBatch)
@@ -175,7 +193,9 @@ for ($b = 0; $b -lt $batchCount; $b++) {
             # JSON-escape the word (handles apostrophes, quotes, etc.)
             $wordJson    = $w.Word | ConvertTo-Json -Compress -Depth 1
             $wordEscaped = $wordJson.Substring(1, $wordJson.Length - 2)
-            $line = $reqPrefix + $w.Id + $reqMiddle + $wordEscaped + $reqSuffix
+            $stage = if ($w.Priority -ge $CoreFromPriority) { "core" } else { "enriched" }
+            $customId = "wq-$($w.Id)-$stage"
+            $line = $reqPrefix + $customId + $reqMiddleByStage[$stage] + $wordEscaped + $reqSuffix
             $sw.WriteLine($line)
         }
     } finally {
@@ -185,10 +205,12 @@ for ($b = 0; $b -lt $batchCount; $b++) {
     $sizeMb = [Math]::Round((Get-Item $jsonlPath).Length / 1MB, 1)
     Write-OK "Wrote $($batchWords.Count) requests ($sizeMb MB)"
     $batchFiles += [PSCustomObject]@{
-        Path      = $jsonlPath
-        WordCount = $batchWords.Count
-        SizeMb    = $sizeMb
-        WordIds   = $batchWords | ForEach-Object { $_.Id }
+        Path        = $jsonlPath
+        WordCount   = $batchWords.Count
+        SizeMb      = $sizeMb
+        WordIds     = $batchWords | ForEach-Object { $_.Id }
+        CoreWords   = @($batchWords | Where-Object { $_.Priority -ge $CoreFromPriority }).Count
+        RichWords   = @($batchWords | Where-Object { $_.Priority -lt $CoreFromPriority }).Count
     }
 
     if ($TestOne) { break }
@@ -222,10 +244,11 @@ function Get-OpenAIBalance {
 }
 
 $trackingData = @{
-    submitted_at  = (Get-Date -Format "o")
-    model         = $Model
-    total_words   = $words.Count
-    batches       = @()
+    submitted_at   = (Get-Date -Format "o")
+    model          = $Model
+    total_words    = $words.Count
+    core_threshold = $CoreFromPriority
+    batches        = @()
 }
 
 # Load existing tracking file if it exists (to append new batches)
@@ -262,6 +285,7 @@ for ($b = 0; $b -lt $batchFiles.Count; $b++) {
     }
 
     Write-Info "Batch $($b+1)/$($batchFiles.Count): Uploading $($bf.SizeMb) MB file..."
+    Write-Info "  Stage mix: $($bf.RichWords) enriched, $($bf.CoreWords) core"
 
     # Upload file to OpenAI Files API using HttpClient (works on PS 5.1 + PS 7)
     try {
@@ -322,16 +346,18 @@ for ($b = 0; $b -lt $batchFiles.Count; $b++) {
     # Record in tracking data (include all fields collect script will write so
     # ConvertFrom-Json PSCustomObjects have the properties on PS 5.1)
     $trackingData.batches += @{
-        batch_id     = $batchId
-        file_id      = $fileId
-        status       = $batchResponse.status
-        word_count   = $bf.WordCount
-        word_ids     = $bf.WordIds
-        submitted_at = (Get-Date -Format "o")
-        collected    = $false
-        collected_at = $null
-        inserted     = 0
-        errors       = 0
+        batch_id      = $batchId
+        file_id       = $fileId
+        status        = $batchResponse.status
+        word_count    = $bf.WordCount
+        word_ids      = $bf.WordIds
+        core_words    = $bf.CoreWords
+        enriched_words = $bf.RichWords
+        submitted_at  = (Get-Date -Format "o")
+        collected     = $false
+        collected_at  = $null
+        inserted      = 0
+        errors        = 0
     }
 
     $submittedCount += $bf.WordCount
@@ -363,6 +389,7 @@ Write-Info "Delete them with: Remove-Item '$TempDir\*.jsonl' to save space"
 Write-H "Done!"
 Write-Host ""
 Write-Host "  Submitted: $submittedCount words across $($batchFiles.Count) batch jobs" -ForegroundColor Green
+Write-Host "  Stage mix: $((@($words | Where-Object { $_.Priority -lt $CoreFromPriority }).Count)) enriched, $((@($words | Where-Object { $_.Priority -ge $CoreFromPriority }).Count)) core" -ForegroundColor White
 Write-Host "  Tracking:  $TrackingFile" -ForegroundColor White
 Write-Host ""
 Write-Host "  Batches complete within 24 hours. To check status and collect results:" -ForegroundColor Cyan
