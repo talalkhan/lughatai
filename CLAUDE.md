@@ -119,6 +119,11 @@ Create `api/appsettings.Development.json` (never commit secrets):
 Create `web/.env.local`:
 ```
 NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_SITE_URL=https://urdumeaning.com
+NEXT_PUBLIC_GA_MEASUREMENT_ID=
+NEXT_PUBLIC_PLAUSIBLE_DOMAIN=
+GOOGLE_SITE_VERIFICATION=
+BING_SITE_VERIFICATION=
 ```
 
 ---

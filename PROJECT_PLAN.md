@@ -11,8 +11,8 @@
 Last updated  : 2026-05-24
 Updated by    : Codex (GPT-5)
 Active phase  : Launch positioning and SEO prep
-Current task  : UrduMeaning launch rebrand
-Next task     : Set launch analytics and ship on `urdumeaning.com`
+Current task  : Launch analytics and SEO instrumentation
+Next task     : Final deploy smoke test and production env setup
 ```
 
 ### Batch Pipeline State (2026-05-23)
@@ -32,6 +32,7 @@ Next task     : Set launch analytics and ship on `urdumeaning.com`
 - **2026-05-24 Azure IaC updated for Pakistan-first rollout:** default region changed to `uaenorth`, and the retired classic CDN module was replaced with Azure Front Door Standard for `/audio/*` delivery. Storage now provisions a dedicated `frontdoor-health` container for anonymous Front Door origin probes.
 - **2026-05-24 Azure IaC cleanup verified:** Bicep warnings removed, `az bicep build --file infrastructure/main.bicep` is clean, and Azure `what-if` still succeeds against `lughatai-prod-rg` in `uaenorth`.
 - **2026-05-24 launch rebrand completed:** user-facing app name switched to `UrduMeaning`, public SEO/schema URLs now target `urdumeaning.com`, the API project files were renamed to `UrduMeaning.Api.*`, and browser storage keys were updated for the new brand while keeping the existing local DB/infrastructure slugs unchanged.
+- **2026-05-24 launch analytics + SEO instrumentation completed:** frontend now supports optional GA4 and Plausible via env vars, emits Google/Bing site verification tags via metadata, adds canonical/Open Graph defaults from `NEXT_PUBLIC_SITE_URL`, and documents the launch envs in `web/.env.example` and `CLAUDE.md`.
 
 ### At-a-Glance Progress
 
@@ -1169,6 +1170,7 @@ Next task     : Set launch analytics and ship on `urdumeaning.com`
 
 | Date | Agent | Task | Notes |
 |------|-------|------|-------|
+| 2026-05-24 | Codex GPT-5 | Launch analytics and SEO instrumentation | Added env-driven GA4 and Plausible scripts, Google/Bing verification metadata, canonical/Open Graph metadata tightening, homepage JSON-LD, and deployment docs for launch env vars |
 | 2026-05-24 | Codex GPT-5 | UrduMeaning launch rebrand | Rebranded the public app from LughatAI to UrduMeaning across metadata, UI copy, schema URLs, PWA assets, browser storage keys, and API project filenames while leaving existing DB and infra slugs intact to avoid launch-week migration churn |
 | 2026-05-23 | Codex GPT-5 | Batch canary follow-up fixes | Tightened core prompt with exact-headword rules, made live/batch generation reject headword drift, fixed collector to reset parse failures to `pending`, anchor inserts to queued words, sanitize stored core rows, repaired the canary-damaged DB rows, and verified a 20-word replay cleanly stored `core` rows |
 | 2026-05-23 | Codex GPT-5 | Batch pipeline hardening | Added `core` vs `enriched` generation stages, background enrichment after real user lookup, atomic queue claiming with `UPDATE ... RETURNING`, stage-aware OpenAI batch submit/collect flow, and sharded backup/restore scripts |

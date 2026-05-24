@@ -5,16 +5,33 @@ import SearchBar from "@/components/SearchBar";
 import WordCard from "@/components/WordCard";
 import WordCardSkeleton from "@/components/skeletons/WordCardSkeleton";
 import { getWordOfTheDay } from "@/lib/api";
+import {
+  DEFAULT_OG_IMAGE,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TITLE,
+  SITE_URL,
+} from "@/lib/site";
 import { WordData } from "@/lib/types";
 
 export const metadata: Metadata = {
-  title: "UrduMeaning | English to Urdu Dictionary",
-  description:
-    "English to Urdu meanings, translations, examples, poetry, and deep cultural context.",
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "UrduMeaning | English to Urdu Dictionary",
-    description: "English to Urdu meanings, translations, examples, poetry, and more.",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
     type: "website",
+    images: [DEFAULT_OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [DEFAULT_OG_IMAGE],
   },
 };
 
@@ -56,8 +73,37 @@ async function WotdSection() {
 }
 
 export default function HomePage() {
+  const homepageJsonLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: SITE_NAME,
+      url: SITE_URL,
+      description: SITE_DESCRIPTION,
+      inLanguage: ["en", "ur"],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      name: SITE_NAME,
+      url: SITE_URL,
+      applicationCategory: "ReferenceApplication",
+      operatingSystem: "Any",
+      description: SITE_DESCRIPTION,
+      offers: {
+        "@type": "Offer",
+        price: "0",
+        priceCurrency: "USD",
+      },
+    },
+  ];
+
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homepageJsonLd) }}
+      />
       {/* Hero */}
       <section className="px-4 pt-10 pb-8 sm:pt-12">
         <div className="mx-auto max-w-5xl rounded-[2rem] border border-indigo-100 bg-gradient-to-br from-white via-indigo-50/70 to-sky-50/80 px-6 py-8 shadow-[0_30px_80px_-50px_rgba(79,70,229,0.55)] dark:border-indigo-900/60 dark:from-gray-950 dark:via-indigo-950/40 dark:to-slate-950 sm:px-8 sm:py-10">

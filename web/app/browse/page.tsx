@@ -1,10 +1,14 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import BrowseClient from "./BrowseClient";
 import WordCardSkeleton from "@/components/skeletons/WordCardSkeleton";
 
-export const metadata = {
-  title: "Browse Words | UrduMeaning",
-  description: "Browse English words by difficulty, CEFR level, or category.",
+export const metadata: Metadata = {
+  title: "Browse English Words | UrduMeaning",
+  description: "Browse English words and meanings in Urdu by difficulty, CEFR level, or category.",
+  alternates: {
+    canonical: "/browse",
+  },
 };
 
 export default function BrowsePage() {

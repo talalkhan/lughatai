@@ -6,6 +6,7 @@ import FavoriteToggle from "@/components/FavoriteToggle";
 import FlagButton from "@/components/FlagButton";
 import WordCacheWriter from "@/components/WordCacheWriter";
 import { getWord } from "@/lib/api";
+import { SITE_URL } from "@/lib/site";
 import { Meaning, WordData } from "@/lib/types";
 import { ApiError } from "@/lib/types";
 
@@ -14,25 +15,35 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const canonicalPath = `/word/${encodeURIComponent(params.slug.toLowerCase())}`;
+
   try {
     const word = await getWord(params.slug);
     const primary = word.meanings?.[0];
-    const urdu = word.script_variants?.nastaliq;
     const description = primary?.definition_en
       ? primary.definition_en.slice(0, 160)
-      : `${params.slug} meaning in Urdu`;
+      : `${params.slug} meaning in Urdu, translation, pronunciation, and examples.`;
 
     return {
-      title: `${word.word} in Urdu | UrduMeaning`,
+      title: `${word.word} meaning in Urdu | UrduMeaning`,
       description,
+      alternates: {
+        canonical: canonicalPath,
+      },
       openGraph: {
-        title: `${word.word} — ${urdu ?? "Urdu Translation"}`,
+        title: `${word.word} meaning in Urdu | UrduMeaning`,
         description,
+        url: `${SITE_URL}${canonicalPath}`,
         type: "article",
       },
     };
   } catch {
-    return { title: "Word Not Found | UrduMeaning" };
+    return {
+      title: "Word Not Found | UrduMeaning",
+      alternates: {
+        canonical: canonicalPath,
+      },
+    };
   }
 }
 
