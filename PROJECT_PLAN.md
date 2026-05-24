@@ -9,11 +9,21 @@
 
 ```
 Last updated  : 2026-05-24
-Updated by    : Codex (GPT-5)
-Active phase  : Launch positioning and SEO prep
-Current task  : Launch analytics and SEO instrumentation
-Next task     : Final deploy smoke test and production env setup
+Updated by    : Claude Sonnet 4.6
+Active phase  : Live (beta deployed)
+Current task  : —
+Next task     : Phase 6 (Monetization) or expand word database beyond 45k
 ```
+
+### Beta Deployment (2026-05-24)
+
+- **urdumeaning.com is live** — Cloudflare DNS → Azure App Service (B2 plan, UAE North)
+- **API:** https://lughatai-beta-api.azurewebsites.net (ASP.NET Core 8)
+- **Frontend:** https://lughatai-beta-web.azurewebsites.net / https://urdumeaning.com (Next.js 14)
+- **Database:** 45,500 word definitions on Azure PostgreSQL (lughatai-beta-db)
+- **CI/CD:** GitHub Actions deploys frontend on every push to master touching web/**
+- **Backups:** Automated weekly pg_dump → Azure Blob Storage (lughataibetastorage/db-backups), 12-week retention
+- **Full deployment reference:** `docs/DEPLOYMENT.md`
 
 ### Batch Pipeline State (2026-05-23)
 
@@ -1170,6 +1180,7 @@ Next task     : Final deploy smoke test and production env setup
 
 | Date | Agent | Task | Notes |
 |------|-------|------|-------|
+| 2026-05-24 | Claude Sonnet 4.6 | Beta deployment complete | API on Azure App Service, Next.js frontend on same B2 plan ($0 extra), urdumeaning.com live via Cloudflare DNS, 45,500 words restored to Azure PostgreSQL, automated weekly Blob Storage backups, full docs in docs/DEPLOYMENT.md |
 | 2026-05-24 | Codex GPT-5 | Launch analytics and SEO instrumentation | Added env-driven GA4 and Plausible scripts, Google/Bing verification metadata, canonical/Open Graph metadata tightening, homepage JSON-LD, and deployment docs for launch env vars |
 | 2026-05-24 | Codex GPT-5 | UrduMeaning launch rebrand | Rebranded the public app from LughatAI to UrduMeaning across metadata, UI copy, schema URLs, PWA assets, browser storage keys, and API project filenames while leaving existing DB and infra slugs intact to avoid launch-week migration churn |
 | 2026-05-23 | Codex GPT-5 | Batch canary follow-up fixes | Tightened core prompt with exact-headword rules, made live/batch generation reject headword drift, fixed collector to reset parse failures to `pending`, anchor inserts to queued words, sanitize stored core rows, repaired the canary-damaged DB rows, and verified a 20-word replay cleanly stored `core` rows |
