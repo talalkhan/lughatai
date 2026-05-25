@@ -35,7 +35,12 @@ param(
     [int]$WatchIntervalSeconds = 120,
 
     # SQL batch size for DB inserts (tune if DB is slow)
-    [int]$InsertBatchSize = 500
+    [int]$InsertBatchSize = 500,
+
+    # Write definitions to Azure PostgreSQL in addition to local Docker.
+    # word_queue tracking (pending/done/failed) always stays on local Docker.
+    [switch]$AzureDb,
+    [string]$AzureConnStr = "host=lughatai-beta-db.postgres.database.azure.com port=5432 dbname=lughatai user=lughatadmin password=NlehvAZp8NqwNvjh%755 sslmode=require"
 )
 
 $ErrorActionPreference = "Stop"
@@ -136,6 +141,14 @@ if (-not (Test-Path $TrackingFile)) {
     Write-Host "  Tracking file not found: $TrackingFile" -ForegroundColor Red
     Write-Host "  Run batch_submit_openai.ps1 first." -ForegroundColor Yellow
     exit 1
+}
+
+if ($AzureDb) {
+    Write-Host ""
+    Write-Host "  *** AZURE MODE ***" -ForegroundColor Cyan
+    Write-Host "  Definitions -> Azure PostgreSQL (lughatai-beta-db)" -ForegroundColor Cyan
+    Write-Host "  word_queue tracking -> local Docker (unchanged)" -ForegroundColor Cyan
+    Write-Host ""
 }
 
 $settings  = Get-Content $SettingsFile -Encoding UTF8 | ConvertFrom-Json
@@ -290,6 +303,10 @@ do {
         $sqlInserts   = [System.Text.StringBuilder]::new()
         $sqlInserts.AppendLine("BEGIN;") | Out-Null
 
+        # Separate builder for Azure-only INSERT statements (no word_queue UPDATEs)
+        $sqlAzureDefs = [System.Text.StringBuilder]::new()
+        if ($AzureDb) { $sqlAzureDefs.AppendLine("BEGIN;") | Out-Null }
+
         $flushInserts = {
             param([System.Text.StringBuilder]$sb, [System.Collections.Generic.List[int]]$ids)
             if ($ids.Count -eq 0) { return }
@@ -304,18 +321,30 @@ do {
 
             $sb.AppendLine("COMMIT;") | Out-Null
             $sql = $sb.ToString()
+
+            # Always write to local Docker — keeps local in sync and updates word_queue status
             $sql | docker compose exec -T postgres psql -U postgres -d lughatai --set ON_ERROR_STOP=1 | Out-Null
             $sb.Clear() | Out-Null
             $sb.AppendLine("BEGIN;") | Out-Null
+
+            # Azure mode: also flush definitions directly to Azure PostgreSQL.
+            # word_queue UPDATE is intentionally excluded — Azure word_queue is not our tracking table.
+            if ($AzureDb -and $sqlAzureDefs.Length -gt 0) {
+                $sqlAzureDefs.AppendLine("COMMIT;") | Out-Null
+                $azureSql = $sqlAzureDefs.ToString()
+                $azureSql | docker compose exec -T postgres psql $AzureConnStr -v ON_ERROR_STOP=1 | Out-Null
+                $sqlAzureDefs.Clear() | Out-Null
+                $sqlAzureDefs.AppendLine("BEGIN;") | Out-Null
+            }
+
             $ids.Clear()
 
-            # Invalidate Redis for every word just written to Postgres.
-            # Without this, Redis serves a stale entry that has no _meta.stage,
-            # so NeedsEnrichment() returns false and the background enricher is
-            # never triggered for batch-collected core words.
-            if ($wordsToInvalidate.Count -gt 0) {
+            # Invalidate local Redis only in non-Azure mode.
+            # In Azure mode the production Redis (Azure Cache) is authoritative;
+            # it will auto-populate on first user lookup. Invalidating local Redis
+            # is pointless when production is on Azure.
+            if (-not $AzureDb -and $wordsToInvalidate.Count -gt 0) {
                 $redisKeys = $wordsToInvalidate | ForEach-Object { "word:$_" }
-                # Pass keys as individual args — PowerShell expands the array automatically
                 docker compose exec -T redis redis-cli DEL $redisKeys | Out-Null
             }
         }
@@ -400,9 +429,9 @@ do {
                 # Escape the JSON for embedding in SQL (escape single quotes)
                 $wordJsonEscaped = $wordJson -replace "'", "''"
                 $wordNameEscaped = $queuedWord -replace "'", "''"
-                $sqlInserts.AppendLine("INSERT INTO word_definitions (word, data, model)") | Out-Null
-                $sqlInserts.AppendLine("VALUES ('$wordNameEscaped', '$wordJsonEscaped'::jsonb, 'gpt-4o-mini-batch')") | Out-Null
-                $sqlInserts.AppendLine("ON CONFLICT (word_lower) DO UPDATE SET data = EXCLUDED.data, model = EXCLUDED.model, updated_at = now();") | Out-Null
+                $insertSql = "INSERT INTO word_definitions (word, data, model) VALUES ('$wordNameEscaped', '$wordJsonEscaped'::jsonb, 'gpt-4o-mini-batch') ON CONFLICT (word_lower) DO UPDATE SET data = EXCLUDED.data, model = EXCLUDED.model, updated_at = now();"
+                $sqlInserts.AppendLine($insertSql) | Out-Null
+                if ($AzureDb) { $sqlAzureDefs.AppendLine($insertSql) | Out-Null }
 
                 $doneWordIds.Add($wqId)
                 $insertCount++
