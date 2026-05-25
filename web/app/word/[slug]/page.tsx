@@ -309,8 +309,8 @@ export default async function WordDetailPage({ params }: Props) {
                 )}
 
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <AudioPlayer url={word.audio?.en_url} lang="EN" />
-                  <AudioPlayer url={word.audio?.ur_url} lang="UR" />
+                  <AudioPlayer url={word.audio?.en_url} lang="EN" word={word.word} />
+                  <AudioPlayer url={word.audio?.ur_url} lang="UR" word={word.word} />
                 </div>
 
                 {word.learning?.contexts && word.learning.contexts.length > 0 && (
