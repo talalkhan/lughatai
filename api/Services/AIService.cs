@@ -271,7 +271,7 @@ public class AIService : IWordAIService
 
         var payload = new
         {
-            model = _config["AI:LiveModel"] ?? "claude-sonnet-4-6",
+            model = _config["AI:BatchModel"] ?? "claude-haiku-4-5-20251001",
             max_tokens = 50,
             system = "You are a Roman Urdu to English translator. The user will give you a word or phrase written in Roman Urdu (Urdu transliterated into Latin script). Reply with ONLY the single best English translation word. No explanation, no punctuation, just the word.",
             messages = new[] { new { role = "user", content = romanUrdu } }

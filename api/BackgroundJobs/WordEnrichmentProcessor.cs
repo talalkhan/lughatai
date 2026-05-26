@@ -82,7 +82,7 @@ public class WordEnrichmentProcessor : BackgroundService, IWordEnrichmentQueue
         if (!NeedsEnrichment(current))
             return;
 
-        var enriched = await ai.GenerateWordAsync(word, usePremium: true, stage: WordGenerationStage.Enriched);
+        var enriched = await ai.GenerateWordAsync(word, usePremium: false, stage: WordGenerationStage.Enriched);
         await repo.SaveWordAsync(word, enriched);
         await cache.SetWordAsync(word, enriched);
         _logger.LogInformation("Enriched core entry for '{Word}' after user lookup", word);
