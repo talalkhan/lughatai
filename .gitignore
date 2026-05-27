@@ -45,10 +45,15 @@ data/*.sql
 data/*.tmp
 scripts/data/
 
-# Azure / Terraform
+# Azure / Terraform / Bicep
 .terraform/
 *.tfstate
 *.tfstate.backup
+infrastructure/**/*.json
+
+# API publish artifacts
+api/publish/
+api/publish.zip
 
 # Generated word-list processing output (large files, regenerate with process_word_list.ps1)
 scripts/words/processed/
