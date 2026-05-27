@@ -34,6 +34,9 @@ try
         }
     });
 
+    // Application Insights — auto-tracks requests, dependencies (Claude/OpenAI calls), exceptions
+    builder.Services.AddApplicationInsightsTelemetry();
+
     // Controllers + Swagger
     builder.Services.AddControllers();
     builder.Services.AddEndpointsApiExplorer();
