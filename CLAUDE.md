@@ -353,14 +353,22 @@ drained $10+ in API credits with zero real user benefit. Do not revert them.
 
 ### Claude model names (correct as of 2026-05-27)
 
-| Config key | Correct value | Wrong value (do not use) |
-|------------|--------------|--------------------------|
-| `AI:BatchModel` | `claude-haiku-4-5` | ~~`claude-haiku-4-5-20251001`~~ — returns 400 on every call |
-| `AI:LiveModel` | `claude-sonnet-4-6` | — |
+| Config key | Current value | Notes |
+|------------|--------------|-------|
+| `AI:BatchModel` | `gpt-4o-mini` | Routes enrichment/batch directly to OpenAI — no Claude attempt |
+| `AI:LiveModel` | `claude-sonnet-4-6` | Used only for live cache misses (new words real users look up) |
 
-The date-suffixed Haiku model (`claude-haiku-4-5-20251001`) has **never worked** — it
-returned HTTP 400 on every single call since the feature was deployed, silently falling
-back to OpenAI for all enrichments. If you change these, verify the model exists first.
+**Why BatchModel is OpenAI, not Claude:**
+Both `claude-haiku-4-5-20251001` and `claude-haiku-4-5` returned HTTP 400 on every call
+— the Anthropic Haiku model name has never been confirmed as valid in this project.
+Rather than guess and silently fall back to OpenAI on every call, BatchModel is set
+directly to `gpt-4o-mini` so the code skips the Claude attempt entirely (see `AIService.cs`
+— when `model.StartsWith("gpt-")`, it routes straight to OpenAI).
+
+**To switch enrichment back to Claude Haiku:** verify the exact current model ID on
+https://docs.anthropic.com/en/docs/about-claude/models, confirm the Anthropic account
+has credits, update `AI:BatchModel` in Azure App Service config and `appsettings.json`,
+then watch App Insights Dependencies for 200s (not 400s) before committing.
 
 ### BatchProcessor — must stay OFF in production
 
