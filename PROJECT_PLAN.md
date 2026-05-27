@@ -8,7 +8,7 @@
 ## Current Status
 
 ```
-Last updated  : 2026-05-27
+Last updated  : 2026-05-27 (evening)
 Updated by    : Claude Sonnet 4.6
 Active phase  : Live (beta deployed)
 Current task  : —
@@ -43,8 +43,9 @@ Next task     : Phase 6 (Monetization) or expand word database beyond 45k
 - **2026-05-24 Azure IaC cleanup verified:** Bicep warnings removed, `az bicep build --file infrastructure/main.bicep` is clean, and Azure `what-if` still succeeds against `lughatai-prod-rg` in `uaenorth`.
 - **2026-05-24 launch rebrand completed:** user-facing app name switched to `UrduMeaning`, public SEO/schema URLs now target `urdumeaning.com`, the API project files were renamed to `UrduMeaning.Api.*`, and browser storage keys were updated for the new brand while keeping the existing local DB/infrastructure slugs unchanged.
 - **2026-05-24 launch analytics + SEO instrumentation completed:** frontend now supports optional GA4 and Plausible via env vars, emits Google/Bing site verification tags via metadata, adds canonical/Open Graph defaults from `NEXT_PUBLIC_SITE_URL`, and documents the launch envs in `web/.env.example` and `CLAUDE.md`.
-- **2026-05-27 Claude API credit drain fixed:** Three root causes identified and fixed: (1) `BatchProcessor__Enabled=true` was set in Azure App Service config, silently processing the entire word_queue via live Claude Haiku API while the site was idle — disabled in Azure and set default to `false` in all Bicep templates. (2) `WordEnrichmentProcessor` was calling Claude Sonnet (`usePremium:true`) for every background enrichment — switched to Haiku (`usePremium:false`). (3) `InterpretRomanUrduAsync` was using `LiveModel` (Sonnet) for every Roman Urdu search — switched to `BatchModel` (Haiku).
-- **2026-05-27 Application Insights added:** `lughatai-beta-insights` resource created in UAE North. Tracks every outbound HTTP call to `api.anthropic.com` and `api.openai.com` as dependencies (with status, duration, errors), plus all request telemetry and exceptions. Free tier (5 GB/month) covers expected usage. `Microsoft.ApplicationInsights.AspNetCore` package added to API; `AddApplicationInsightsTelemetry()` registered in `Program.cs`. `APPLICATIONINSIGHTS_CONNECTION_STRING` added to Azure App Service config and all Bicep templates (beta + prod). New modules: `infrastructure/beta/modules/insights.bicep`, `infrastructure/modules/insights.bicep`.
+- **2026-05-27 Claude API credit drain fixed (round 1):** Three root causes: (1) `BatchProcessor__Enabled=true` in Azure App Service config was processing 28k word_queue words via live Claude API with no users on site — disabled and defaulted to `false` in all Bicep. (2) `WordEnrichmentProcessor` used `usePremium:true` (Sonnet) — switched to Haiku. (3) `InterpretRomanUrduAsync` used `LiveModel` (Sonnet) — switched to `BatchModel` (Haiku).
+- **2026-05-27 Application Insights added:** `lughatai-beta-insights` resource created in UAE North. Tracks every outbound HTTP call to `api.anthropic.com` and `api.openai.com` as dependencies. Free tier (5 GB/month). `Microsoft.ApplicationInsights.AspNetCore` added; `AddApplicationInsightsTelemetry()` in `Program.cs`. New Bicep modules: `infrastructure/beta/modules/insights.bicep`, `infrastructure/modules/insights.bicep`.
+- **2026-05-27 Claude API credit drain fixed (round 2 — crawler-triggered enrichment):** App Insights revealed search engine crawlers hitting the sitemap (10k word URLs) were triggering `WordEnrichmentProcessor` on every page, each attempt calling Claude (which returned 400 on every call due to wrong model name `claude-haiku-4-5-20251001`) then falling back to OpenAI. Three fixes: (1) Fixed model name to `claude-haiku-4-5` in appsettings.json and all Bicep. (2) Added `TryConsumeRateLimit()` to `WordEnrichmentProcessor` — max 30 enrichments/hour (configurable via `Enrichment:MaxPerHour`). (3) Added `React.cache()` to `web/app/word/[slug]/page.tsx` so `generateMetadata` and page component share one API call instead of making two. All documented in `CLAUDE.md` under "AI Cost Controls".
 
 ### At-a-Glance Progress
 

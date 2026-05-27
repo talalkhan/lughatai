@@ -97,7 +97,7 @@ Create `api/appsettings.Development.json` (never commit secrets):
   "AI": {
     "AnthropicApiKey": "YOUR_KEY",
     "OpenAIApiKey": "YOUR_KEY",
-    "BatchModel": "claude-haiku-4-5-20251001",
+    "BatchModel": "claude-haiku-4-5",
     "LiveModel": "claude-sonnet-4-6"
   },
   "Azure": {
@@ -214,7 +214,7 @@ Haiku for bulk words and Sonnet for the most important ones.
 "AI": {
   "AnthropicApiKey": "sk-ant-...",
   "OpenAIApiKey":    "sk-...",
-  "BatchModel":      "claude-haiku-4-5-20251001",
+  "BatchModel":      "claude-haiku-4-5",
   "LiveModel":       "claude-sonnet-4-6"
 }
 ```
@@ -343,6 +343,68 @@ These are final decisions from PRD Section 14. Do not change without explicit us
 | 8 | User corrections | Flag button only. Logs to `corrections` table. No free-text Phase 1. |
 | 9 | Platform | Responsive web (Next.js) + PWA. No native app. |
 | 10 | Monetization | Stripe Checkout (web-native). Phase 3. |
+
+---
+
+## ⚠ AI Cost Controls — Read Before Touching Anything AI-Related
+
+These controls exist because search engine crawlers + misconfigured background jobs
+drained $10+ in API credits with zero real user benefit. Do not revert them.
+
+### Claude model names (correct as of 2026-05-27)
+
+| Config key | Correct value | Wrong value (do not use) |
+|------------|--------------|--------------------------|
+| `AI:BatchModel` | `claude-haiku-4-5` | ~~`claude-haiku-4-5-20251001`~~ — returns 400 on every call |
+| `AI:LiveModel` | `claude-sonnet-4-6` | — |
+
+The date-suffixed Haiku model (`claude-haiku-4-5-20251001`) has **never worked** — it
+returned HTTP 400 on every single call since the feature was deployed, silently falling
+back to OpenAI for all enrichments. If you change these, verify the model exists first.
+
+### BatchProcessor — must stay OFF in production
+
+`BatchProcessor:Enabled` is `false` in `appsettings.json` and in all Bicep templates.
+**Do not set it to `true` in Azure App Service config.** When enabled, it processes
+the entire `word_queue` table using the live Claude API at full per-token prices —
+not the discounted OpenAI Batch API. With 300k+ words pending, enabling it will
+drain hundreds of dollars in hours. It was accidentally left `true` in Azure and
+drained $10 overnight with no users on the site.
+
+To bulk-generate words use: `scripts/batch_submit_openai.ps1` (50% discount, async).
+
+### WordEnrichmentProcessor — rate-limited to 30/hour
+
+`WordEnrichmentProcessor` upgrades "core"-stage words to "enriched" when users look
+them up. It is rate-limited to **30 enrichments per hour** (configurable via
+`Enrichment:MaxPerHour` in appsettings). Do not remove this limit or raise it
+significantly. Here is why:
+
+- The sitemap (`web/app/sitemap.ts`) lists up to 10,000 word URLs and revalidates hourly.
+- Google/Bing crawl every URL in the sitemap — that is not real user traffic.
+- Without the rate limit, each crawler page hit triggers an AI enrichment call.
+- 600 crawler hits/hour × ~$0.001/call = $14/day with zero user benefit.
+
+The rate limit means crawlers can index freely while AI spend stays bounded.
+
+### WordEnrichmentProcessor — uses Haiku, not Sonnet
+
+Background enrichment uses `usePremium: false` → `BatchModel` (Haiku).
+Do not change it to `usePremium: true`. Haiku produces perfectly good enrichments
+for background upgrades. Sonnet is reserved for live cache misses on brand-new words
+that real users look up in real time.
+
+### Roman Urdu search — uses Haiku, not Sonnet
+
+`InterpretRomanUrduAsync` uses `BatchModel` (Haiku). It is a 50-token task.
+Do not switch it back to `LiveModel` (Sonnet).
+
+### Next.js word page — React cache() for deduplication
+
+`web/app/word/[slug]/page.tsx` uses `React.cache()` to wrap `getWord()`.
+Both `generateMetadata` and the page component call `getWordCached()`, not `getWord()`
+directly. This ensures **one** API call per page render instead of two.
+Do not remove the `cache()` wrapper or call `getWord()` directly in this file.
 
 ---
 
