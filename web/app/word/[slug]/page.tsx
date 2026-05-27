@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import AudioPlayer from "@/components/AudioPlayer";
@@ -10,6 +11,11 @@ import { SITE_URL } from "@/lib/site";
 import { Meaning, WordData } from "@/lib/types";
 import { ApiError } from "@/lib/types";
 
+// Deduplicate API calls within a single render — generateMetadata and the page
+// component both call getWord() for the same slug. React cache() ensures only
+// one HTTP request is made per render cycle regardless of how many callers.
+const getWordCached = cache(getWord);
+
 interface Props {
   params: { slug: string };
 }
@@ -18,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const canonicalPath = `/word/${encodeURIComponent(params.slug.toLowerCase())}`;
 
   try {
-    const word = await getWord(params.slug);
+    const word = await getWordCached(params.slug);
     const primary = word.meanings?.[0];
     const description = primary?.definition_en
       ? primary.definition_en.slice(0, 160)
@@ -219,7 +225,7 @@ function MeaningSection({ meaning }: { meaning: Meaning; index: number }) {
 export default async function WordDetailPage({ params }: Props) {
   let word: WordData;
   try {
-    word = await getWord(params.slug);
+    word = await getWordCached(params.slug);
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) notFound();
     throw err;

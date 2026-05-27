@@ -15,13 +15,20 @@ public class WordEnrichmentProcessor : BackgroundService, IWordEnrichmentQueue
 {
     private readonly IServiceProvider _services;
     private readonly ILogger<WordEnrichmentProcessor> _logger;
+    private readonly IConfiguration _config;
     private readonly Channel<string> _channel;
     private readonly ConcurrentDictionary<string, byte> _queuedWords;
 
-    public WordEnrichmentProcessor(IServiceProvider services, ILogger<WordEnrichmentProcessor> logger)
+    // Rate limiter — prevents crawlers from draining AI credits.
+    // Tracks enrichments in the current 1-hour rolling window.
+    private int _enrichmentsThisHour = 0;
+    private DateTime _windowStart = DateTime.UtcNow;
+
+    public WordEnrichmentProcessor(IServiceProvider services, ILogger<WordEnrichmentProcessor> logger, IConfiguration config)
     {
         _services = services;
         _logger = logger;
+        _config = config;
         _channel = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
         {
             SingleReader = true,
@@ -73,6 +80,14 @@ public class WordEnrichmentProcessor : BackgroundService, IWordEnrichmentQueue
 
     private async Task EnrichAsync(string word, CancellationToken ct)
     {
+        // Rate limit: max N enrichments per hour to prevent crawlers draining AI credits.
+        var maxPerHour = _config.GetValue<int>("Enrichment:MaxPerHour", 30);
+        if (!TryConsumeRateLimit(maxPerHour))
+        {
+            _logger.LogDebug("Enrichment rate limit reached ({Max}/hr) — skipping '{Word}'", maxPerHour, word);
+            return;
+        }
+
         using var scope = _services.CreateScope();
         var repo = scope.ServiceProvider.GetRequiredService<IWordRepository>();
         var ai = scope.ServiceProvider.GetRequiredService<IWordAIService>();
@@ -86,6 +101,25 @@ public class WordEnrichmentProcessor : BackgroundService, IWordEnrichmentQueue
         await repo.SaveWordAsync(word, enriched);
         await cache.SetWordAsync(word, enriched);
         _logger.LogInformation("Enriched core entry for '{Word}' after user lookup", word);
+    }
+
+    private bool TryConsumeRateLimit(int maxPerHour)
+    {
+        lock (this)
+        {
+            var now = DateTime.UtcNow;
+            if ((now - _windowStart).TotalHours >= 1.0)
+            {
+                _windowStart = now;
+                _enrichmentsThisHour = 0;
+            }
+
+            if (_enrichmentsThisHour >= maxPerHour)
+                return false;
+
+            _enrichmentsThisHour++;
+            return true;
+        }
     }
 
     public static bool NeedsEnrichment(WordData? data) =>
