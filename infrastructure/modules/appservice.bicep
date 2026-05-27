@@ -44,6 +44,9 @@ param adminApiKey string
 @secure()
 param datadogApiKey string = ''
 
+@description('Application Insights connection string for telemetry')
+param appInsightsConnectionString string = ''
+
 // ── App Service Plan (S1 Standard — supports custom domains + SSL) ──────────
 resource plan 'Microsoft.Web/serverfarms@2023-01-01' = {
   name: planName
@@ -86,13 +89,16 @@ resource app 'Microsoft.Web/sites@2023-01-01' = {
         { name: 'Azure__CdnBaseUrl', value: cdnBaseUrl }
         { name: 'Jwt__Secret', value: jwtSecret }
         { name: 'Admin__ApiKey', value: adminApiKey }
-        { name: 'BatchProcessor__Enabled', value: 'true' }
+        // BatchProcessor is OFF by default — enable only for intentional bulk generation runs
+        { name: 'BatchProcessor__Enabled', value: 'false' }
         { name: 'Datadog__ApiKey', value: datadogApiKey }
         { name: 'Datadog__ServiceName', value: 'lughatai-api' }
         // Datadog APM auto-instrumentation (set DD_AGENT_HOST if using sidecar agent)
         { name: 'DD_SERVICE', value: 'lughatai-api' }
         { name: 'DD_ENV', value: 'production' }
         { name: 'DD_VERSION', value: '1.0' }
+        // Application Insights — tracks requests, dependencies (Claude/OpenAI), exceptions
+        { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
         { name: 'WEBSITE_RUN_FROM_PACKAGE', value: '1' }
       ]
     }

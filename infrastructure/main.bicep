@@ -84,6 +84,15 @@ module cdn 'modules/cdn.bicep' = {
   }
 }
 
+// ── Application Insights — free up to 5 GB/month ─────────────────────────
+module insights 'modules/insights.bicep' = {
+  name: 'insights'
+  params: {
+    location: location
+    insightsName: '${resourcePrefix}-insights'
+  }
+}
+
 module appService 'modules/appservice.bicep' = {
   name: 'appservice'
   params: {
@@ -101,6 +110,7 @@ module appService 'modules/appservice.bicep' = {
     jwtSecret: jwtSecret
     adminApiKey: adminApiKey
     datadogApiKey: datadogApiKey
+    appInsightsConnectionString: insights.outputs.connectionString
   }
 }
 
@@ -111,3 +121,4 @@ output dbServerFqdn string = database.outputs.serverFqdn
 output redisFqdn string = redis.outputs.hostName
 output cdnUrl string = cdn.outputs.endpointUrl
 output storageAccountName string = storageAccountName
+output appInsightsName string = '${resourcePrefix}-insights'

@@ -77,7 +77,7 @@ lughatai/
 | Storage | Azure Blob Storage | - |
 | Cloud | Microsoft Azure | - |
 | CI/CD | Azure DevOps Pipelines | - |
-| Monitoring | Datadog | - |
+| Monitoring | Azure Application Insights + Datadog | App Insights active (beta); Datadog optional |
 | Auth | ASP.NET Core Identity + JWT | Phase 2 |
 
 ---
@@ -104,6 +104,9 @@ Create `api/appsettings.Development.json` (never commit secrets):
     "SpeechKey": "",
     "SpeechRegion": "",
     "BlobConnection": ""
+  },
+  "ApplicationInsights": {
+    "ConnectionString": ""  // leave empty for local dev; set in Azure App Service config
   },
   "Jwt": {
     "Secret": "dev-secret-min-32-chars-long-here",

@@ -8,7 +8,7 @@
 ## Current Status
 
 ```
-Last updated  : 2026-05-24
+Last updated  : 2026-05-27
 Updated by    : Claude Sonnet 4.6
 Active phase  : Live (beta deployed)
 Current task  : —
@@ -43,6 +43,8 @@ Next task     : Phase 6 (Monetization) or expand word database beyond 45k
 - **2026-05-24 Azure IaC cleanup verified:** Bicep warnings removed, `az bicep build --file infrastructure/main.bicep` is clean, and Azure `what-if` still succeeds against `lughatai-prod-rg` in `uaenorth`.
 - **2026-05-24 launch rebrand completed:** user-facing app name switched to `UrduMeaning`, public SEO/schema URLs now target `urdumeaning.com`, the API project files were renamed to `UrduMeaning.Api.*`, and browser storage keys were updated for the new brand while keeping the existing local DB/infrastructure slugs unchanged.
 - **2026-05-24 launch analytics + SEO instrumentation completed:** frontend now supports optional GA4 and Plausible via env vars, emits Google/Bing site verification tags via metadata, adds canonical/Open Graph defaults from `NEXT_PUBLIC_SITE_URL`, and documents the launch envs in `web/.env.example` and `CLAUDE.md`.
+- **2026-05-27 Claude API credit drain fixed:** Three root causes identified and fixed: (1) `BatchProcessor__Enabled=true` was set in Azure App Service config, silently processing the entire word_queue via live Claude Haiku API while the site was idle — disabled in Azure and set default to `false` in all Bicep templates. (2) `WordEnrichmentProcessor` was calling Claude Sonnet (`usePremium:true`) for every background enrichment — switched to Haiku (`usePremium:false`). (3) `InterpretRomanUrduAsync` was using `LiveModel` (Sonnet) for every Roman Urdu search — switched to `BatchModel` (Haiku).
+- **2026-05-27 Application Insights added:** `lughatai-beta-insights` resource created in UAE North. Tracks every outbound HTTP call to `api.anthropic.com` and `api.openai.com` as dependencies (with status, duration, errors), plus all request telemetry and exceptions. Free tier (5 GB/month) covers expected usage. `Microsoft.ApplicationInsights.AspNetCore` package added to API; `AddApplicationInsightsTelemetry()` registered in `Program.cs`. `APPLICATIONINSIGHTS_CONNECTION_STRING` added to Azure App Service config and all Bicep templates (beta + prod). New modules: `infrastructure/beta/modules/insights.bicep`, `infrastructure/modules/insights.bicep`.
 
 ### At-a-Glance Progress
 

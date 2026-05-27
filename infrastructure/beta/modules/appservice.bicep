@@ -37,6 +37,9 @@ param jwtSecret string
 @secure()
 param adminApiKey string
 
+@description('Application Insights connection string for telemetry')
+param appInsightsConnectionString string = ''
+
 // ── App Service Plan — B2 Basic ────────────────────────────────────────────
 // B2: 2 vCores, 3.5 GB RAM — more than S1 (1 vCore, 1.75 GB) at half the cost.
 // No auto-scaling or deployment slots; upgrade to S1/S2 when traffic demands it.
@@ -85,9 +88,11 @@ resource app 'Microsoft.Web/sites@2023-01-01' = {
         { name: 'Cors__AllowedOrigins__0',         value: 'https://urdumeaning.com' }
         { name: 'Cors__AllowedOrigins__1',         value: 'https://www.urdumeaning.com' }
         { name: 'ASPNETCORE_AllowedHosts',         value: 'urdumeaning.com;www.urdumeaning.com;${appName}.azurewebsites.net' }
-        // Disable batch processor after initial word generation run to free CPU
-        { name: 'BatchProcessor__Enabled',         value: 'true' }
-        { name: 'WEBSITE_RUN_FROM_PACKAGE',        value: '1' }
+        // BatchProcessor is OFF by default — enable only for intentional bulk generation runs
+        { name: 'BatchProcessor__Enabled',              value: 'false' }
+        // Application Insights — tracks requests, dependencies (Claude/OpenAI), exceptions
+        { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
+        { name: 'WEBSITE_RUN_FROM_PACKAGE',             value: '1' }
       ]
     }
   }

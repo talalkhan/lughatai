@@ -63,6 +63,15 @@ module speech 'modules/speech.bicep' = {
   }
 }
 
+// ── Application Insights — free up to 5 GB/month ─────────────────────────
+module insights 'modules/insights.bicep' = {
+  name: 'insights'
+  params: {
+    location: location
+    insightsName: '${resourcePrefix}-insights'
+  }
+}
+
 // ── App Service — B2 Basic, no Redis, direct Blob URLs ────────────────────
 module appService 'modules/appservice.bicep' = {
   name: 'appservice'
@@ -70,27 +79,29 @@ module appService 'modules/appservice.bicep' = {
     location: location
     planName: '${resourcePrefix}-plan'
     appName:  '${resourcePrefix}-api'
-    connectionString: database.outputs.connectionString
-    blobConnection:   storage.outputs.connectionString
-    speechKey:        speech.outputs.key
-    speechRegion:     location
-    blobBaseUrl:      storage.outputs.blobEndpoint
-    anthropicApiKey:  anthropicApiKey
-    openAiApiKey:     openAiApiKey
-    jwtSecret:        jwtSecret
-    adminApiKey:      adminApiKey
+    connectionString:          database.outputs.connectionString
+    blobConnection:            storage.outputs.connectionString
+    speechKey:                 speech.outputs.key
+    speechRegion:              location
+    blobBaseUrl:               storage.outputs.blobEndpoint
+    anthropicApiKey:           anthropicApiKey
+    openAiApiKey:              openAiApiKey
+    jwtSecret:                 jwtSecret
+    adminApiKey:               adminApiKey
+    appInsightsConnectionString: insights.outputs.connectionString
   }
 }
 
 // ── Outputs ────────────────────────────────────────────────────────────────
-output apiUrl            string = 'https://${appService.outputs.hostName}'
-output dbServerFqdn      string = database.outputs.serverFqdn
-output storageAccountName string = storageAccountName
-output blobEndpoint      string = storage.outputs.blobEndpoint
+output apiUrl                string = 'https://${appService.outputs.hostName}'
+output dbServerFqdn          string = database.outputs.serverFqdn
+output storageAccountName    string = storageAccountName
+output blobEndpoint          string = storage.outputs.blobEndpoint
+output appInsightsName       string = '${resourcePrefix}-insights'
 
 // Next steps after deploy:
 //   1. dotnet ef database update --connection "<connectionString output above>"
 //   2. .\scripts\db_restore.ps1  (restore word definitions from backup)
 //   3. Set NEXT_PUBLIC_API_URL=<apiUrl> on Vercel
 //   4. Point urdumeaning.com DNS to <apiUrl hostname>
-//   5. After initial word generation: set BatchProcessor__Enabled=false
+//   5. BatchProcessor__Enabled is false by default — enable only for bulk generation runs
