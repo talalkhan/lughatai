@@ -66,10 +66,16 @@ public class WordService : IWordService
             }
             else
             {
-                // L3: AI generation — gated by WordGeneration:Enabled (default false).
-                // Set WordGeneration__Enabled=true in Azure only when intentionally allowing
-                // new word generation. Leave false to prevent bots from triggering AI calls.
-                if (!_config.GetValue<bool>("WordGeneration:Enabled", false))
+                // L3: AI generation.
+                // Block multi-word phrases — bots crawl URLs like /api/word/matrix%20calculation
+                // but real dictionary users only look up single words. Phrases will never be in
+                // the DB so each one would trigger an AI call; return 404 immediately instead.
+                if (word.Contains(' '))
+                    return null;
+
+                // Master kill switch — set WordGeneration__Enabled=false in Azure to stop all
+                // new word generation without a deployment (e.g. to protect API credits).
+                if (!_config.GetValue<bool>("WordGeneration:Enabled", true))
                     return null;
 
                 try

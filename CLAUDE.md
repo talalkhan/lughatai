@@ -398,17 +398,17 @@ Two master on/off switches guard against bot-triggered AI spend:
 
 | Config key | Default (appsettings.json) | Production (Azure) | What it controls |
 |---|---|---|---|
-| `WordGeneration:Enabled` | `false` | `false` | Live AI generation in `WordService` for words not in DB |
+| `WordGeneration:Enabled` | `true` | `true` | Live AI generation in `WordService` for single words not in DB |
 | `Enrichment:Enabled` | `false` | `false` | Background enrichment in `WordEnrichmentProcessor` |
 
-**Do not set either to `true` in Azure unless you intend to spend AI credits.**
+**`WordGeneration:Enabled` is `true` by default** — real users can look up any word.
+Multi-word phrases (words containing a space) are blocked in code regardless of this flag:
+a bot crawled URLs like `GET /api/word/matrix%20calculation` at ~7/min, none of which
+are in the DB, each triggering an AI call. The space guard returns 404 immediately for
+any phrase, so bots can't trigger AI spend. Single words go through normally.
 
-A bot crawled multi-word phrase URLs (e.g. `GET /api/word/matrix%20calculation`) at
-~7/min. None of these phrases are in the DB, so each triggered a live AI generation:
-Claude (400, no credits) → OpenAI fallback → $0.001/call. Bots don't stop. The only
-defense is keeping `WordGeneration:Enabled=false` so unknown words return 404, not AI.
-
-For local dev: set both to `true` in `appsettings.Development.json`.
+**`WordGeneration:Enabled=false`** is an emergency kill switch — set it in Azure App
+Service config (no deployment needed) to freeze new word generation if AI costs spike.
 
 ### WordEnrichmentProcessor — also rate-limited to 30/hour
 

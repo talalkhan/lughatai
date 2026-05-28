@@ -92,7 +92,7 @@ resource app 'Microsoft.Web/sites@2023-01-01' = {
         { name: 'BatchProcessor__Enabled',              value: 'false' }
         // WordGeneration: live AI for words not in DB. OFF by default — bots will drain credits.
         // Set to 'true' only when intentionally allowing new word generation.
-        { name: 'WordGeneration__Enabled',              value: 'false' }
+        { name: 'WordGeneration__Enabled',              value: 'true' }
         // Enrichment: background upgrade of core→enriched. OFF by default — same reason.
         { name: 'Enrichment__Enabled',                  value: 'false' }
         { name: 'Enrichment__MaxPerHour',               value: '30' }
