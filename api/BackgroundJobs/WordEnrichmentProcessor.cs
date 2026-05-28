@@ -80,6 +80,14 @@ public class WordEnrichmentProcessor : BackgroundService, IWordEnrichmentQueue
 
     private async Task EnrichAsync(string word, CancellationToken ct)
     {
+        // Master on/off switch. Set Enrichment__Enabled=true in Azure only when intentionally
+        // allowing background upgrades. Default false keeps background AI silent.
+        if (!_config.GetValue<bool>("Enrichment:Enabled", false))
+        {
+            _logger.LogDebug("Enrichment disabled via config — skipping '{Word}'", word);
+            return;
+        }
+
         // Rate limit: max N enrichments per hour to prevent crawlers draining AI credits.
         var maxPerHour = _config.GetValue<int>("Enrichment:MaxPerHour", 30);
         if (!TryConsumeRateLimit(maxPerHour))

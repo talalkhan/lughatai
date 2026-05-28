@@ -115,6 +115,13 @@ Create `api/appsettings.Development.json` (never commit secrets):
   },
   "Cors": {
     "AllowedOrigins": ["http://localhost:3000"]
+  },
+  "WordGeneration": {
+    "Enabled": true
+  },
+  "Enrichment": {
+    "Enabled": true,
+    "MaxPerHour": 30
   }
 }
 ```
@@ -351,24 +358,28 @@ These are final decisions from PRD Section 14. Do not change without explicit us
 These controls exist because search engine crawlers + misconfigured background jobs
 drained $10+ in API credits with zero real user benefit. Do not revert them.
 
+### Anthropic account status (as of 2026-05-27)
+
+**The Anthropic account is at $0 balance.** Every call returns HTTP 400:
+`"Your credit balance is too low to access the Anthropic API."`
+
+Anthropic checks billing BEFORE validating the model name, so the model name validity
+(`claude-sonnet-4-6`, `claude-haiku-4-5`) cannot be confirmed until credits are added.
+To restore Claude: go to https://console.anthropic.com → Plans & Billing → add credits.
+
 ### Claude model names (correct as of 2026-05-27)
 
-| Config key | Current value | Notes |
-|------------|--------------|-------|
-| `AI:BatchModel` | `gpt-4o-mini` | Routes enrichment/batch directly to OpenAI — no Claude attempt |
-| `AI:LiveModel` | `claude-sonnet-4-6` | Used only for live cache misses (new words real users look up) |
+| Config key | Current Azure value | Notes |
+|------------|---------------------|-------|
+| `AI:BatchModel` | `claude-haiku-4-5` | Used by WordEnrichmentProcessor (when enabled) |
+| `AI:LiveModel` | `claude-sonnet-4-6` | Used by WordService live generation (when enabled) |
 
-**Why BatchModel is OpenAI, not Claude:**
-Both `claude-haiku-4-5-20251001` and `claude-haiku-4-5` returned HTTP 400 on every call
-— the Anthropic Haiku model name has never been confirmed as valid in this project.
-Rather than guess and silently fall back to OpenAI on every call, BatchModel is set
-directly to `gpt-4o-mini` so the code skips the Claude attempt entirely (see `AIService.cs`
-— when `model.StartsWith("gpt-")`, it routes straight to OpenAI).
+Both return HTTP 400 currently because Anthropic account has $0. Not confirmed invalid.
+Code has a `gpt-*` shortcut: if BatchModel starts with "gpt-", AIService routes directly
+to OpenAI with no Claude attempt. Set `AI__BatchModel=gpt-4o-mini` to use OpenAI for batch.
 
-**To switch enrichment back to Claude Haiku:** verify the exact current model ID on
-https://docs.anthropic.com/en/docs/about-claude/models, confirm the Anthropic account
-has credits, update `AI:BatchModel` in Azure App Service config and `appsettings.json`,
-then watch App Insights Dependencies for 200s (not 400s) before committing.
+**To verify model names:** add Anthropic credits, then set `WordGeneration__Enabled=true`
+in Azure and watch App Insights Dependencies — 200 = model is valid, 400 = wrong name.
 
 ### BatchProcessor — must stay OFF in production
 
@@ -381,12 +392,28 @@ drained $10 overnight with no users on the site.
 
 To bulk-generate words use: `scripts/batch_submit_openai.ps1` (50% discount, async).
 
-### WordEnrichmentProcessor — rate-limited to 30/hour
+### WordGeneration and Enrichment — both OFF by default in production
 
-`WordEnrichmentProcessor` upgrades "core"-stage words to "enriched" when users look
-them up. It is rate-limited to **30 enrichments per hour** (configurable via
-`Enrichment:MaxPerHour` in appsettings). Do not remove this limit or raise it
-significantly. Here is why:
+Two master on/off switches guard against bot-triggered AI spend:
+
+| Config key | Default (appsettings.json) | Production (Azure) | What it controls |
+|---|---|---|---|
+| `WordGeneration:Enabled` | `false` | `false` | Live AI generation in `WordService` for words not in DB |
+| `Enrichment:Enabled` | `false` | `false` | Background enrichment in `WordEnrichmentProcessor` |
+
+**Do not set either to `true` in Azure unless you intend to spend AI credits.**
+
+A bot crawled multi-word phrase URLs (e.g. `GET /api/word/matrix%20calculation`) at
+~7/min. None of these phrases are in the DB, so each triggered a live AI generation:
+Claude (400, no credits) → OpenAI fallback → $0.001/call. Bots don't stop. The only
+defense is keeping `WordGeneration:Enabled=false` so unknown words return 404, not AI.
+
+For local dev: set both to `true` in `appsettings.Development.json`.
+
+### WordEnrichmentProcessor — also rate-limited to 30/hour
+
+Even when `Enrichment:Enabled=true`, the processor is capped at **30 enrichments per
+hour** (configurable via `Enrichment:MaxPerHour`). Do not remove the cap. Here is why:
 
 - The sitemap (`web/app/sitemap.ts`) lists up to 10,000 word URLs and revalidates hourly.
 - Google/Bing crawl every URL in the sitemap — that is not real user traffic.

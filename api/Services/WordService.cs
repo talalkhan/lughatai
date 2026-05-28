@@ -20,6 +20,7 @@ public class WordService : IWordService
     private readonly IWordNormalizer _normalizer;
     private readonly IWordEnrichmentQueue _enrichmentQueue;
     private readonly ILogger<WordService> _logger;
+    private readonly IConfiguration _config;
 
     public WordService(
         ICacheService cache,
@@ -27,7 +28,8 @@ public class WordService : IWordService
         IWordAIService ai,
         IWordNormalizer normalizer,
         IWordEnrichmentQueue enrichmentQueue,
-        ILogger<WordService> logger)
+        ILogger<WordService> logger,
+        IConfiguration config)
     {
         _cache = cache;
         _repo = repo;
@@ -35,6 +37,7 @@ public class WordService : IWordService
         _normalizer = normalizer;
         _enrichmentQueue = enrichmentQueue;
         _logger = logger;
+        _config = config;
     }
 
     public async Task<WordData?> GetWordAsync(string rawWord, int? userId = null)
@@ -63,7 +66,12 @@ public class WordService : IWordService
             }
             else
             {
-                // L3: AI generation
+                // L3: AI generation — gated by WordGeneration:Enabled (default false).
+                // Set WordGeneration__Enabled=true in Azure only when intentionally allowing
+                // new word generation. Leave false to prevent bots from triggering AI calls.
+                if (!_config.GetValue<bool>("WordGeneration:Enabled", false))
+                    return null;
+
                 try
                 {
                     var generated = await _ai.GenerateWordAsync(word, usePremium: true);

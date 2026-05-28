@@ -90,6 +90,12 @@ resource app 'Microsoft.Web/sites@2023-01-01' = {
         { name: 'ASPNETCORE_AllowedHosts',         value: 'urdumeaning.com;www.urdumeaning.com;${appName}.azurewebsites.net' }
         // BatchProcessor is OFF by default — enable only for intentional bulk generation runs
         { name: 'BatchProcessor__Enabled',              value: 'false' }
+        // WordGeneration: live AI for words not in DB. OFF by default — bots will drain credits.
+        // Set to 'true' only when intentionally allowing new word generation.
+        { name: 'WordGeneration__Enabled',              value: 'false' }
+        // Enrichment: background upgrade of core→enriched. OFF by default — same reason.
+        { name: 'Enrichment__Enabled',                  value: 'false' }
+        { name: 'Enrichment__MaxPerHour',               value: '30' }
         // Application Insights — tracks requests, dependencies (Claude/OpenAI), exceptions
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
         { name: 'WEBSITE_RUN_FROM_PACKAGE',             value: '1' }
