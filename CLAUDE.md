@@ -409,6 +409,12 @@ URLs, `+`, hyphenated/non-alpha slugs, and any normalized value that is not a cl
 single English token. This protects against crawlers hitting arbitrary `/word/...` pages
 and turning SSR into AI spend.
 
+Temporary crawler control: valid single-word `/word/...` pages can still be crawled at high
+volume and force SSR to call `/api/word/{word}`. Until CDN caching/WAF rules are in place,
+the web app removes word URLs from `sitemap.xml`, disallows `/word/` in `robots.txt`, and
+uses `web/middleware.ts` to return a cheap `429` for recognized crawler user agents before
+the word page renders.
+
 **`WordGeneration:Enabled=false`** is an emergency kill switch — set it in Azure App
 Service config (no deployment needed) to freeze new word generation if AI costs spike.
 
