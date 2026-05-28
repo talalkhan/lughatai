@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Text.RegularExpressions;
 using UrduMeaning.Api.Data;
 using UrduMeaning.Api.Services;
 
@@ -8,13 +10,18 @@ namespace UrduMeaning.Api.Controllers;
 [Route("api")]
 public class SearchController : ControllerBase
 {
+    private const int MaxRomanQueryLength = 60;
+    private static readonly Regex RomanQueryPattern = new(@"^[a-zA-Z\s'\-]+$", RegexOptions.Compiled);
+    private static readonly Regex EnglishWordPattern = new(@"^[a-z]+$", RegexOptions.Compiled);
     private readonly IWordRepository _repo;
     private readonly IWordAIService _ai;
+    private readonly IConfiguration _config;
 
-    public SearchController(IWordRepository repo, IWordAIService ai)
+    public SearchController(IWordRepository repo, IWordAIService ai, IConfiguration config)
     {
         _repo = repo;
         _ai = ai;
+        _config = config;
     }
 
     /// <summary>English prefix autocomplete search.</summary>
@@ -37,10 +44,14 @@ public class SearchController : ControllerBase
     /// If no results found, calls AI to interpret the query as Roman Urdu.
     /// </summary>
     [HttpGet("search/roman")]
+    [EnableRateLimiting("ai-search")]
     public async Task<IActionResult> SearchRoman([FromQuery] string? q, [FromQuery] int limit = 10)
     {
         if (string.IsNullOrWhiteSpace(q) || q.Length < 2)
             return Ok(Array.Empty<object>());
+
+        if (q.Length > MaxRomanQueryLength || !RomanQueryPattern.IsMatch(q))
+            return BadRequest(new { error = "Invalid Roman Urdu query" });
 
         if (limit > 20) limit = 20;
 
@@ -51,11 +62,14 @@ public class SearchController : ControllerBase
         if (stored.Any())
             return Ok(new { results = stored, source = "db" });
 
+        if (!_config.GetValue<bool>("RomanSearchAI:Enabled", false))
+            return Ok(new { results = Array.Empty<object>(), source = "none" });
+
         // Phase 2: AI interprets Roman Urdu → returns the canonical English word
         try
         {
             var englishWord = await _ai.InterpretRomanUrduAsync(query);
-            if (string.IsNullOrEmpty(englishWord))
+            if (string.IsNullOrEmpty(englishWord) || !EnglishWordPattern.IsMatch(englishWord))
                 return Ok(new { results = Array.Empty<object>(), source = "none" });
 
             var aiResults = await _repo.SearchAsync(englishWord.ToLowerInvariant(), limit);

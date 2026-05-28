@@ -4,6 +4,7 @@ using UrduMeaning.Api.Data;
 using UrduMeaning.Api.Middleware;
 using UrduMeaning.Api.Services;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using StackExchange.Redis;
@@ -100,7 +101,8 @@ try
         options.AddDefaultPolicy(policy =>
             policy.WithOrigins(allowedOrigins)
                   .AllowAnyHeader()
-                  .AllowAnyMethod());
+                  .AllowAnyMethod()
+                  .AllowCredentials());
     });
 
     // JWT Authentication
@@ -112,12 +114,17 @@ try
             if (string.IsNullOrWhiteSpace(secret))
                 throw new InvalidOperationException("Jwt:Secret is not configured. Set via environment variable Jwt__Secret.");
             var keyBytes = System.Text.Encoding.UTF8.GetBytes(secret);
+            var issuer = jwtConfig["Issuer"] ?? "UrduMeaning";
+            var audience = jwtConfig["Audience"] ?? "UrduMeaning.Web";
             options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(keyBytes),
-                ValidateIssuer = false,
-                ValidateAudience = false,
+                ValidateIssuer = true,
+                ValidIssuer = issuer,
+                ValidateAudience = true,
+                ValidAudience = audience,
+                ValidateLifetime = true,
                 ClockSkew = TimeSpan.Zero
             };
         });
@@ -150,6 +157,42 @@ try
                     QueueLimit = 0
                 }));
 
+        // Auth endpoints: lower ceiling than general API to slow password spraying.
+        options.AddPolicy("auth", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 10,
+                    Window = TimeSpan.FromMinutes(5),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
+                }));
+
+        // AI-backed search fallback: tighter because every miss can spend external API credits.
+        options.AddPolicy("ai-search", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 10,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
+                }));
+
+        // Admin endpoints: static-key protected today, so keep a narrow request budget.
+        options.AddPolicy("admin", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 20,
+                    Window = TimeSpan.FromMinutes(5),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
+                }));
+
         options.RejectionStatusCode = 429;
         options.OnRejected = async (ctx, ct) =>
         {
@@ -163,6 +206,11 @@ try
     builder.Services.AddHealthChecks();
 
     var app = builder.Build();
+
+    app.UseForwardedHeaders(new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    });
 
     app.UseMiddleware<InputSanitizerMiddleware>();
 

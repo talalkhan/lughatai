@@ -23,13 +23,17 @@ public class UserController : ControllerBase
 
     private NpgsqlConnection Connection() => new(_config.GetConnectionString("Default"));
 
-    private int UserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    private int? CurrentUserId =>
+        int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId) ? userId : null;
 
     // ── Favorites ────────────────────────────────────────────────────────────
 
     [HttpGet("favorites")]
     public async Task<IActionResult> GetFavorites()
     {
+        var userId = CurrentUserId;
+        if (!userId.HasValue) return Unauthorized();
+
         using var conn = Connection();
         var sql = """
             SELECT uf.word,
@@ -43,7 +47,7 @@ public class UserController : ControllerBase
             WHERE uf.user_id = @userId
             ORDER BY uf.created_at DESC
             """;
-        var results = await conn.QueryAsync(sql, new { userId = UserId });
+        var results = await conn.QueryAsync(sql, new { userId });
         return Ok(results);
     }
 
@@ -52,13 +56,15 @@ public class UserController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(word) || word.Length > 150)
             return BadRequest(new { error = "Invalid word" });
+        var userId = CurrentUserId;
+        if (!userId.HasValue) return Unauthorized();
 
         using var conn = Connection();
         try
         {
             await conn.ExecuteAsync(
                 "INSERT INTO user_favorites (user_id, word) VALUES (@userId, @word) ON CONFLICT DO NOTHING",
-                new { userId = UserId, word = word.Trim().ToLowerInvariant() });
+                new { userId, word = word.Trim().ToLowerInvariant() });
             return Ok(new { favorited = true });
         }
         catch
@@ -70,20 +76,30 @@ public class UserController : ControllerBase
     [HttpDelete("favorites/{word}")]
     public async Task<IActionResult> RemoveFavorite(string word)
     {
+        if (string.IsNullOrWhiteSpace(word) || word.Length > 150)
+            return BadRequest(new { error = "Invalid word" });
+        var userId = CurrentUserId;
+        if (!userId.HasValue) return Unauthorized();
+
         using var conn = Connection();
         var affected = await conn.ExecuteAsync(
             "DELETE FROM user_favorites WHERE user_id = @userId AND word = @word",
-            new { userId = UserId, word = word.Trim().ToLowerInvariant() });
+            new { userId, word = word.Trim().ToLowerInvariant() });
         return affected > 0 ? Ok(new { favorited = false }) : NotFound();
     }
 
     [HttpGet("favorites/{word}/status")]
     public async Task<IActionResult> FavoriteStatus(string word)
     {
+        if (string.IsNullOrWhiteSpace(word) || word.Length > 150)
+            return BadRequest(new { error = "Invalid word" });
+        var userId = CurrentUserId;
+        if (!userId.HasValue) return Unauthorized();
+
         using var conn = Connection();
         var exists = await conn.QuerySingleAsync<bool>(
             "SELECT EXISTS(SELECT 1 FROM user_favorites WHERE user_id = @userId AND word = @word)",
-            new { userId = UserId, word = word.Trim().ToLowerInvariant() });
+            new { userId, word = word.Trim().ToLowerInvariant() });
         return Ok(new { favorited = exists });
     }
 
@@ -92,6 +108,9 @@ public class UserController : ControllerBase
     [HttpGet("history")]
     public async Task<IActionResult> GetHistory()
     {
+        var userId = CurrentUserId;
+        if (!userId.HasValue) return Unauthorized();
+
         using var conn = Connection();
         // Last 100 unique words, most recent first
         var sql = """
@@ -106,7 +125,7 @@ public class UserController : ControllerBase
             ORDER BY word, looked_up_at DESC
             LIMIT 100
             """;
-        var results = await conn.QueryAsync(sql, new { userId = UserId });
+        var results = await conn.QueryAsync(sql, new { userId });
         // Re-sort by looked_up_at descending
         return Ok(results.OrderByDescending(r => r.looked_up_at));
     }
@@ -114,8 +133,11 @@ public class UserController : ControllerBase
     [HttpDelete("history")]
     public async Task<IActionResult> ClearHistory()
     {
+        var userId = CurrentUserId;
+        if (!userId.HasValue) return Unauthorized();
+
         using var conn = Connection();
-        await conn.ExecuteAsync("DELETE FROM user_history WHERE user_id = @userId", new { userId = UserId });
+        await conn.ExecuteAsync("DELETE FROM user_history WHERE user_id = @userId", new { userId });
         return NoContent();
     }
 
@@ -124,10 +146,13 @@ public class UserController : ControllerBase
     [HttpGet("me")]
     public async Task<IActionResult> Me()
     {
+        var userId = CurrentUserId;
+        if (!userId.HasValue) return Unauthorized();
+
         using var conn = Connection();
         var user = await conn.QuerySingleOrDefaultAsync(
             "SELECT id, username, email, tier, created_at FROM users WHERE id = @id",
-            new { id = UserId });
+            new { id = userId });
         if (user == null) return NotFound();
         return Ok(user);
     }

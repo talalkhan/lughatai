@@ -192,7 +192,7 @@ export interface UserDto {
 
 export interface AuthResult {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string | null;
   user: UserDto;
 }
 

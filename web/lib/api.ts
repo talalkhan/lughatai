@@ -26,6 +26,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   try {
     res = await fetch(`${BASE_URL}${path}`, {
       next: { revalidate: 60 },
+      credentials: "include",
       ...options,
       signal: options?.signal ?? controller.signal,
     });
@@ -120,20 +121,20 @@ export async function login(
   });
 }
 
-export async function refreshToken(token: string): Promise<AuthResult> {
+export async function refreshToken(): Promise<AuthResult> {
   return apiFetch<AuthResult>("/api/auth/refresh", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken: token }),
+    body: JSON.stringify({}),
     cache: "no-store",
   });
 }
 
-export async function logout(token: string): Promise<void> {
+export async function logout(): Promise<void> {
   await apiFetch<void>("/api/auth/logout", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken: token }),
+    body: JSON.stringify({}),
     cache: "no-store",
   });
 }

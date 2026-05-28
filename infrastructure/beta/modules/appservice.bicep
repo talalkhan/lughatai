@@ -85,6 +85,8 @@ resource app 'Microsoft.Web/sites@2023-01-01' = {
         // No CDN — serve audio direct from Blob Storage
         { name: 'Azure__CdnBaseUrl',               value: blobBaseUrl }
         { name: 'Jwt__Secret',                     value: jwtSecret }
+        { name: 'Jwt__Issuer',                     value: 'UrduMeaning' }
+        { name: 'Jwt__Audience',                   value: 'UrduMeaning.Web' }
         { name: 'Admin__ApiKey',                   value: adminApiKey }
         { name: 'Cors__AllowedOrigins__0',         value: 'https://urdumeaning.com' }
         { name: 'Cors__AllowedOrigins__1',         value: 'https://www.urdumeaning.com' }
@@ -95,6 +97,7 @@ resource app 'Microsoft.Web/sites@2023-01-01' = {
         // Set to 'true' only when intentionally allowing new word generation.
         { name: 'WordGeneration__Enabled',              value: 'false' }
         { name: 'WordGeneration__RequireApprovedWord',  value: 'true' }
+        { name: 'RomanSearchAI__Enabled',               value: 'false' }
         // Enrichment: background upgrade of core→enriched. OFF by default — same reason.
         { name: 'Enrichment__Enabled',                  value: 'false' }
         { name: 'Enrichment__MaxPerHour',               value: '30' }

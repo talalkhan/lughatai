@@ -11,7 +11,6 @@ import { login, logout, refreshToken, register } from "./api";
 import { AuthResult, UserDto } from "./types";
 
 const ACCESS_TOKEN_KEY = "urdumeaning_access_token";
-const REFRESH_TOKEN_KEY = "urdumeaning_refresh_token";
 
 interface AuthState {
   user: UserDto | null;
@@ -36,27 +35,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const applyAuth = useCallback((result: AuthResult) => {
     localStorage.setItem(ACCESS_TOKEN_KEY, result.accessToken);
-    localStorage.setItem(REFRESH_TOKEN_KEY, result.refreshToken);
     setState({ user: result.user, accessToken: result.accessToken, isLoading: false });
   }, []);
 
   // Rehydrate from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(ACCESS_TOKEN_KEY);
-    const storedRefresh = localStorage.getItem(REFRESH_TOKEN_KEY);
 
-    if (!stored || !storedRefresh) {
+    if (!stored) {
       setState(s => ({ ...s, isLoading: false }));
       return;
     }
 
     // Try to refresh (the access token might be expired)
-    refreshToken(storedRefresh)
+    refreshToken()
       .then(result => applyAuth(result))
       .catch(() => {
         // Refresh token expired — clear storage
         localStorage.removeItem(ACCESS_TOKEN_KEY);
-        localStorage.removeItem(REFRESH_TOKEN_KEY);
         setState({ user: null, accessToken: null, isLoading: false });
       });
   }, [applyAuth]);
@@ -75,12 +71,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const handleLogout = useCallback(async () => {
-    const storedRefresh = localStorage.getItem(REFRESH_TOKEN_KEY);
-    if (storedRefresh) {
-      await logout(storedRefresh).catch(() => {});
-    }
+    await logout().catch(() => {});
     localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
     setState({ user: null, accessToken: null, isLoading: false });
   }, []);
 

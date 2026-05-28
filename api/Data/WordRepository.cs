@@ -2,6 +2,7 @@ using Dapper;
 using UrduMeaning.Api.Models;
 using Npgsql;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace UrduMeaning.Api.Data;
 
@@ -40,6 +41,7 @@ public record QueueStatus(int Pending, int Processing, int Done, int Failed);
 public class WordRepository : IWordRepository
 {
     private readonly IConfiguration _config;
+    private static readonly Regex QueueWordPattern = new(@"^[a-z]+$", RegexOptions.Compiled);
     private static readonly JsonSerializerOptions JsonOpts = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -180,19 +182,35 @@ public class WordRepository : IWordRepository
     public async Task<WordData?> GetRandomWordAsync(string? difficulty)
     {
         using var conn = Connection();
-        string sql;
+        string countSql;
+        string selectSql;
         object param;
         if (!string.IsNullOrEmpty(difficulty))
         {
-            sql = "SELECT data FROM word_definitions WHERE data->'learning'->>'difficulty' = @difficulty ORDER BY RANDOM() LIMIT 1";
+            countSql = "SELECT COUNT(*) FROM word_definitions WHERE data->'learning'->>'difficulty' = @difficulty";
+            selectSql = """
+                SELECT data
+                FROM word_definitions
+                WHERE data->'learning'->>'difficulty' = @difficulty
+                ORDER BY id
+                LIMIT 1 OFFSET @offset
+                """;
             param = new { difficulty };
         }
         else
         {
-            sql = "SELECT data FROM word_definitions ORDER BY RANDOM() LIMIT 1";
+            countSql = "SELECT COUNT(*) FROM word_definitions";
+            selectSql = "SELECT data FROM word_definitions ORDER BY id LIMIT 1 OFFSET @offset";
             param = new { };
         }
-        var json = await conn.QuerySingleOrDefaultAsync<string>(sql, param);
+
+        var total = await conn.ExecuteScalarAsync<int>(countSql, param);
+        if (total <= 0) return null;
+
+        var offset = Random.Shared.Next(total);
+        var parameters = new DynamicParameters(param);
+        parameters.Add("offset", offset);
+        var json = await conn.QuerySingleOrDefaultAsync<string>(selectSql, parameters);
         if (json == null) return null;
         return JsonSerializer.Deserialize<WordData>(json, JsonOpts);
     }
@@ -321,10 +339,13 @@ public class WordRepository : IWordRepository
         using var conn = Connection();
         var cleanedWords = words
             .Select(w => w.Trim().ToLowerInvariant())
-            .Where(w => !string.IsNullOrWhiteSpace(w))
+            .Where(w => !string.IsNullOrWhiteSpace(w) && w.Length <= 64 && QueueWordPattern.IsMatch(w))
             .Distinct()
             .Select(w => new { word = w, priority })
             .ToArray();
+
+        if (cleanedWords.Length == 0)
+            return;
 
         var sql = """
             INSERT INTO approved_words (word, source, priority)

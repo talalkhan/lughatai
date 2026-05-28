@@ -17,7 +17,7 @@ public interface IAuthService
     int? GetUserIdFromToken(string token);
 }
 
-public record AuthResult(string AccessToken, string RefreshToken, UserDto User);
+public record AuthResult(string AccessToken, string? RefreshToken, UserDto User);
 public record UserDto(int Id, string Username, string Email, string Tier);
 
 public class AuthService : IAuthService
@@ -72,6 +72,7 @@ public class AuthService : IAuthService
     public async Task<AuthResult?> RefreshAsync(string refreshToken)
     {
         using var conn = Connection();
+        var refreshTokenHash = HashRefreshToken(refreshToken);
         var sql = """
             SELECT id, username, email, tier
             FROM users
@@ -80,7 +81,7 @@ public class AuthService : IAuthService
             LIMIT 1
             """;
         var row = await conn.QuerySingleOrDefaultAsync<(int Id, string Username, string Email, string Tier)?>(
-            sql, new { refreshToken });
+            sql, new { refreshToken = refreshTokenHash });
 
         if (row == null) return null;
         return await IssueTokensAsync(conn, row.Value.Id, row.Value.Username, row.Value.Email, row.Value.Tier);
@@ -89,9 +90,10 @@ public class AuthService : IAuthService
     public async Task RevokeRefreshTokenAsync(string refreshToken)
     {
         using var conn = Connection();
+        var refreshTokenHash = HashRefreshToken(refreshToken);
         await conn.ExecuteAsync(
             "UPDATE users SET refresh_token = NULL, refresh_token_expires_at = NULL WHERE refresh_token = @refreshToken",
-            new { refreshToken });
+            new { refreshToken = refreshTokenHash });
     }
 
     public int? GetUserIdFromToken(string token)
@@ -99,13 +101,18 @@ public class AuthService : IAuthService
         try
         {
             var key = System.Text.Encoding.UTF8.GetBytes(_config["Jwt:Secret"]!);
+            var issuer = _config["Jwt:Issuer"] ?? "UrduMeaning";
+            var audience = _config["Jwt:Audience"] ?? "UrduMeaning.Web";
             var handler = new JwtSecurityTokenHandler();
             var principal = handler.ValidateToken(token, new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
                 IssuerSigningKey = new SymmetricSecurityKey(key),
-                ValidateIssuer = false,
-                ValidateAudience = false,
+                ValidateIssuer = true,
+                ValidIssuer = issuer,
+                ValidateAudience = true,
+                ValidAudience = audience,
+                ValidateLifetime = true,
                 ClockSkew = TimeSpan.Zero
             }, out _);
             var claim = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -122,12 +129,13 @@ public class AuthService : IAuthService
     {
         var accessToken = GenerateJwt(userId, username, email);
         var refreshToken = GenerateRefreshToken();
+        var refreshTokenHash = HashRefreshToken(refreshToken);
         var refreshExpiry = DateTime.UtcNow.AddDays(
             _config.GetValue<int>("Jwt:RefreshExpiryDays", 30));
 
         await conn.ExecuteAsync(
             "UPDATE users SET refresh_token = @refreshToken, refresh_token_expires_at = @refreshExpiry, updated_at = now() WHERE id = @userId",
-            new { refreshToken, refreshExpiry, userId });
+            new { refreshToken = refreshTokenHash, refreshExpiry, userId });
 
         return new AuthResult(accessToken, refreshToken, new UserDto(userId, username, email, tier));
     }
@@ -137,8 +145,12 @@ public class AuthService : IAuthService
         var key = new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(_config["Jwt:Secret"]!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expiryHours = _config.GetValue<int>("Jwt:ExpiryHours", 1);
+        var issuer = _config["Jwt:Issuer"] ?? "UrduMeaning";
+        var audience = _config["Jwt:Audience"] ?? "UrduMeaning.Web";
 
         var token = new JwtSecurityToken(
+            issuer: issuer,
+            audience: audience,
             claims: new[]
             {
                 new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
@@ -156,5 +168,12 @@ public class AuthService : IAuthService
         var bytes = new byte[64];
         RandomNumberGenerator.Fill(bytes);
         return Convert.ToBase64String(bytes);
+    }
+
+    private static string HashRefreshToken(string refreshToken)
+    {
+        var bytes = System.Text.Encoding.UTF8.GetBytes(refreshToken);
+        var hash = SHA256.HashData(bytes);
+        return Convert.ToBase64String(hash);
     }
 }

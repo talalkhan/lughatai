@@ -12,6 +12,8 @@ namespace UrduMeaning.Api.Controllers;
 public class WordController : ControllerBase
 {
     private static readonly Regex LiveGenerationWordPattern = new(@"^[a-zA-Z]+$", RegexOptions.Compiled);
+    private static readonly HashSet<string> ValidDifficulties =
+        new(StringComparer.OrdinalIgnoreCase) { "beginner", "intermediate", "advanced", "expert" };
     private readonly IWordService _wordService;
     private readonly IAudioService _audioService;
     private readonly IWordRepository _repo;
@@ -36,7 +38,8 @@ public class WordController : ControllerBase
 
         int? userId = null;
         var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (idClaim != null) userId = int.Parse(idClaim);
+        if (idClaim != null && int.TryParse(idClaim, out var parsedUserId))
+            userId = parsedUserId;
 
         var result = await _wordService.GetWordAsync(word, userId);
         if (result == null)
@@ -73,6 +76,9 @@ public class WordController : ControllerBase
     [HttpGet("word/random")]
     public async Task<IActionResult> GetRandom([FromQuery] string? difficulty)
     {
+        if (difficulty != null && !ValidDifficulties.Contains(difficulty))
+            return BadRequest(new { error = "Invalid difficulty. Allowed: beginner, intermediate, advanced, expert." });
+
         var result = await _wordService.GetRandomWordAsync(difficulty);
         if (result == null)
             return NotFound(new { error = "No words available" });
@@ -103,7 +109,12 @@ public class WordController : ControllerBase
         if (string.IsNullOrWhiteSpace(word) || word.Length > 150)
             return BadRequest(new { error = "Invalid word" });
 
-        var data = await _wordService.GetWordAsync(word);
+        if (!CanAttemptLiveGeneration(word))
+            return NotFound(new { error = "Word not found" });
+
+        // Audio should only be generated for entries that already exist. Avoid
+        // letting an audio URL trigger live AI definition generation plus TTS.
+        var data = await _repo.GetWordAsync(word.Trim().ToLowerInvariant());
         if (data == null)
             return NotFound(new { error = "Word not found" });
 
@@ -128,7 +139,8 @@ public class WordController : ControllerBase
 
         int? userId = null;
         var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (idClaim != null) userId = int.Parse(idClaim);
+        if (idClaim != null && int.TryParse(idClaim, out var parsedUserId))
+            userId = parsedUserId;
 
         await _repo.AddCorrectionAsync(word, userId, req.Reason, req.Notes);
         return Ok(new { flagged = true });
