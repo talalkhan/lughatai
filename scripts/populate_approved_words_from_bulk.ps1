@@ -55,6 +55,8 @@ try {
     $writer.WriteLine("-- Source: $BulkSql")
     $writer.WriteLine("-- Words: $($seen.Count)")
     $writer.WriteLine("")
+    $writer.WriteLine("BEGIN;")
+    $writer.WriteLine("")
     $writer.WriteLine("CREATE TABLE IF NOT EXISTS approved_words (")
     $writer.WriteLine("    word text PRIMARY KEY,")
     $writer.WriteLine("    source text NOT NULL DEFAULT 'manual',")
@@ -88,6 +90,8 @@ try {
     $writer.WriteLine("SET priority = LEAST(approved_words.priority, EXCLUDED.priority);")
     $writer.WriteLine("")
     $writer.WriteLine("SELECT priority, count(*) AS approved_count FROM approved_words GROUP BY priority ORDER BY priority;")
+    $writer.WriteLine("")
+    $writer.WriteLine("COMMIT;")
 }
 finally {
     $writer.Close()
