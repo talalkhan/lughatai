@@ -13,12 +13,14 @@ public class WordController : ControllerBase
     private readonly IWordService _wordService;
     private readonly IAudioService _audioService;
     private readonly IWordRepository _repo;
+    private readonly IConfiguration _config;
 
-    public WordController(IWordService wordService, IAudioService audioService, IWordRepository repo)
+    public WordController(IWordService wordService, IAudioService audioService, IWordRepository repo, IConfiguration config)
     {
         _wordService = wordService;
         _audioService = audioService;
         _repo = repo;
+        _config = config;
     }
 
     [HttpGet("word/{word}")]
@@ -33,7 +35,15 @@ public class WordController : ControllerBase
 
         var result = await _wordService.GetWordAsync(word, userId);
         if (result == null)
+        {
+            // Two distinct cases:
+            // 1. WordGeneration disabled → word simply not in dictionary → 404
+            // 2. WordGeneration enabled but AI failed → service error → 503
+            var generationEnabled = _config.GetValue<bool>("WordGeneration:Enabled", false);
+            if (!generationEnabled)
+                return NotFound(new { error = "Word not found" });
             return StatusCode(503, new { error = "Service temporarily unavailable" });
+        }
 
         return Ok(result);
     }
