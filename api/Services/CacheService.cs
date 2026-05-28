@@ -11,23 +11,38 @@ public interface ICacheService
     Task InvalidateWordAsync(string word);
 }
 
+public sealed class RedisConnectionProvider
+{
+    public RedisConnectionProvider(IConnectionMultiplexer? connection)
+    {
+        Connection = connection;
+    }
+
+    public IConnectionMultiplexer? Connection { get; }
+}
+
 public class CacheService : ICacheService
 {
-    private readonly IConnectionMultiplexer _redis;
+    private readonly IConnectionMultiplexer? _redis;
     private readonly ILogger<CacheService> _logger;
+    private readonly bool _enabled;
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
 
-    public CacheService(IConnectionMultiplexer redis, ILogger<CacheService> logger)
+    public CacheService(RedisConnectionProvider redis, IConfiguration config, ILogger<CacheService> logger)
     {
-        _redis = redis;
+        _redis = redis.Connection;
+        _enabled = config.GetValue<bool>("Redis:Enabled", false) && _redis != null;
         _logger = logger;
     }
 
     public async Task<WordData?> GetWordAsync(string word)
     {
+        if (!_enabled)
+            return null;
+
         try
         {
-            var db = _redis.GetDatabase();
+            var db = _redis!.GetDatabase();
             var value = await db.StringGetAsync(CacheKey(word));
             if (value.IsNullOrEmpty)
                 return null;
@@ -42,9 +57,12 @@ public class CacheService : ICacheService
 
     public async Task SetWordAsync(string word, WordData data)
     {
+        if (!_enabled)
+            return;
+
         try
         {
-            var db = _redis.GetDatabase();
+            var db = _redis!.GetDatabase();
             var json = JsonSerializer.Serialize(data, JsonOpts);
             await db.StringSetAsync(CacheKey(word), json, TimeSpan.FromDays(7));
         }
@@ -56,9 +74,12 @@ public class CacheService : ICacheService
 
     public async Task InvalidateWordAsync(string word)
     {
+        if (!_enabled)
+            return;
+
         try
         {
-            var db = _redis.GetDatabase();
+            var db = _redis!.GetDatabase();
             await db.KeyDeleteAsync(CacheKey(word));
         }
         catch (Exception ex)

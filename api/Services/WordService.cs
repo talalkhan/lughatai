@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using UrduMeaning.Api.BackgroundJobs;
 using UrduMeaning.Api.Data;
 using UrduMeaning.Api.Models;
@@ -14,6 +15,7 @@ public interface IWordService
 
 public class WordService : IWordService
 {
+    private static readonly Regex LiveGenerationWordPattern = new(@"^[a-z]+$", RegexOptions.Compiled);
     private readonly ICacheService _cache;
     private readonly IWordRepository _repo;
     private readonly IWordAIService _ai;
@@ -67,10 +69,10 @@ public class WordService : IWordService
             else
             {
                 // L3: AI generation.
-                // Block multi-word phrases — bots crawl URLs like /api/word/matrix%20calculation
-                // but real dictionary users only look up single words. Phrases will never be in
-                // the DB so each one would trigger an AI call; return 404 immediately instead.
-                if (word.Contains(' '))
+                // Only clean single English tokens can trigger live AI generation. Bots crawl
+                // phrase and repeatedly encoded URLs like /word/matrix%20calculation or
+                // /word/math%252520system; those should never spend AI credits.
+                if (!CanGenerateLive(rawWord, word))
                     return null;
 
                 // Master kill switch — set WordGeneration__Enabled=false in Azure to stop all
@@ -112,5 +114,19 @@ public class WordService : IWordService
     public async Task<WordData?> GetRandomWordAsync(string? difficulty)
     {
         return await _repo.GetRandomWordAsync(difficulty);
+    }
+
+    public static bool CanGenerateLive(string rawWord, string normalizedWord)
+    {
+        if (string.IsNullOrWhiteSpace(rawWord) || string.IsNullOrWhiteSpace(normalizedWord))
+            return false;
+
+        if (rawWord.Contains('%') || rawWord.Contains('+'))
+            return false;
+
+        if (rawWord.Any(char.IsWhiteSpace) || normalizedWord.Any(char.IsWhiteSpace))
+            return false;
+
+        return LiveGenerationWordPattern.IsMatch(normalizedWord);
     }
 }

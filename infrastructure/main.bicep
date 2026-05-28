@@ -100,7 +100,6 @@ module appService 'modules/appservice.bicep' = {
     planName: '${resourcePrefix}-plan'
     appName: '${resourcePrefix}-api'
     connectionString: database.outputs.connectionString
-    redisConnection: redis.outputs.connectionString
     blobConnection: storage.outputs.connectionString
     speechKey: speech.outputs.key
     speechRegion: location

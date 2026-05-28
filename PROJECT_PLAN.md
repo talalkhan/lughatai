@@ -8,8 +8,8 @@
 ## Current Status
 
 ```
-Last updated  : 2026-05-27 (evening)
-Updated by    : Claude Sonnet 4.6
+Last updated  : 2026-05-27 (night)
+Updated by    : Codex GPT-5
 Active phase  : Live (beta deployed)
 Current task  : —
 Next task     : Phase 6 (Monetization) or expand word database beyond 45k
@@ -46,6 +46,7 @@ Next task     : Phase 6 (Monetization) or expand word database beyond 45k
 - **2026-05-27 Claude API credit drain fixed (round 1):** Three root causes: (1) `BatchProcessor__Enabled=true` in Azure App Service config was processing 28k word_queue words via live Claude API with no users on site — disabled and defaulted to `false` in all Bicep. (2) `WordEnrichmentProcessor` used `usePremium:true` (Sonnet) — switched to Haiku. (3) `InterpretRomanUrduAsync` used `LiveModel` (Sonnet) — switched to `BatchModel` (Haiku).
 - **2026-05-27 Application Insights added:** `lughatai-beta-insights` resource created in UAE North. Tracks every outbound HTTP call to `api.anthropic.com` and `api.openai.com` as dependencies. Free tier (5 GB/month). `Microsoft.ApplicationInsights.AspNetCore` added; `AddApplicationInsightsTelemetry()` in `Program.cs`. New Bicep modules: `infrastructure/beta/modules/insights.bicep`, `infrastructure/modules/insights.bicep`.
 - **2026-05-27 Claude API credit drain fixed (round 2 — crawler-triggered enrichment):** App Insights revealed search engine crawlers hitting the sitemap (10k word URLs) were triggering `WordEnrichmentProcessor` on every page, each attempt calling Claude (which returned 400 on every call due to wrong model name `claude-haiku-4-5-20251001`) then falling back to OpenAI. Three fixes: (1) Fixed model name to `claude-haiku-4-5` in appsettings.json and all Bicep. (2) Added `TryConsumeRateLimit()` to `WordEnrichmentProcessor` — max 30 enrichments/hour (configurable via `Enrichment:MaxPerHour`). (3) Added `React.cache()` to `web/app/word/[slug]/page.tsx` so `generateMetadata` and page component share one API call instead of making two. All documented in `CLAUDE.md` under "AI Cost Controls".
+- **2026-05-27 Claude API credit drain fixed (round 3 — live generation crawler flood):** Production App Insights showed frequent `/api/word/{word}` calls from the Azure-hosted Next.js SSR frontend, driven by external crawler hits to arbitrary `/word/...` pages. Immediate production controls were applied: `WordGeneration__Enabled=false`, `Redis__Enabled=false`, `Redis__Connection=''`, `AI__BatchModel=gpt-4o-mini`, and `AI__LiveModel=gpt-4o-mini`. API was redeployed with stricter guards: `/api/word/{word}` rejects whitespace, encoded, `+`, and non-alpha slugs before DB/AI work; live AI generation is limited to clean single English tokens only; Roman Urdu AI interpretation routes to OpenAI when BatchModel is `gpt-*`; Redis is a no-op when disabled. The Next.js word route now applies the same clean single-word slug rule before SSR calls the API, so invalid crawler URLs 404 at the frontend instead of reaching App Service. Verification: known word `mathematics` returned 200, phrase and repeated-encoded slugs returned 404, and App Insights showed no Anthropic/OpenAI dependency calls or Redis warnings after deployment.
 
 ### At-a-Glance Progress
 

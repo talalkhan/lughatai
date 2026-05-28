@@ -11,10 +11,6 @@ param appName string
 @secure()
 param connectionString string
 
-@description('Redis connection string')
-@secure()
-param redisConnection string
-
 @description('Azure Blob Storage connection string')
 @secure()
 param blobConnection string
@@ -78,11 +74,12 @@ resource app 'Microsoft.Web/sites@2023-01-01' = {
       appSettings: [
         { name: 'ASPNETCORE_ENVIRONMENT', value: 'Production' }
         { name: 'ConnectionStrings__Default', value: connectionString }
-        { name: 'Redis__Connection', value: redisConnection }
+        { name: 'Redis__Enabled', value: 'false' }
+        { name: 'Redis__Connection', value: '' }
         { name: 'AI__AnthropicApiKey', value: anthropicApiKey }
         { name: 'AI__OpenAIApiKey', value: openAiApiKey }
         { name: 'AI__BatchModel', value: 'gpt-4o-mini' }
-        { name: 'AI__LiveModel', value: 'claude-sonnet-4-6' }
+        { name: 'AI__LiveModel', value: 'gpt-4o-mini' }
         { name: 'Azure__SpeechKey', value: speechKey }
         { name: 'Azure__SpeechRegion', value: speechRegion }
         { name: 'Azure__BlobConnection', value: blobConnection }

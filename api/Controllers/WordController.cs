@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UrduMeaning.Api.Data;
@@ -10,6 +11,7 @@ namespace UrduMeaning.Api.Controllers;
 [Route("api")]
 public class WordController : ControllerBase
 {
+    private static readonly Regex LiveGenerationWordPattern = new(@"^[a-zA-Z]+$", RegexOptions.Compiled);
     private readonly IWordService _wordService;
     private readonly IAudioService _audioService;
     private readonly IWordRepository _repo;
@@ -29,6 +31,9 @@ public class WordController : ControllerBase
         if (string.IsNullOrWhiteSpace(word) || word.Length > 150)
             return BadRequest(new { error = "Invalid word" });
 
+        if (!CanAttemptLiveGeneration(word))
+            return NotFound(new { error = "Word not found" });
+
         int? userId = null;
         var idClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (idClaim != null) userId = int.Parse(idClaim);
@@ -46,6 +51,17 @@ public class WordController : ControllerBase
         }
 
         return Ok(result);
+    }
+
+    private static bool CanAttemptLiveGeneration(string rawWord)
+    {
+        if (rawWord.Contains('%') || rawWord.Contains('+'))
+            return false;
+
+        if (rawWord.Any(char.IsWhiteSpace))
+            return false;
+
+        return LiveGenerationWordPattern.IsMatch(rawWord);
     }
 
     [HttpGet("word/random")]

@@ -15,13 +15,31 @@ import { ApiError } from "@/lib/types";
 // component both call getWord() for the same slug. React cache() ensures only
 // one HTTP request is made per render cycle regardless of how many callers.
 const getWordCached = cache(getWord);
+const WORD_SLUG_PATTERN = /^[a-zA-Z]+$/;
 
 interface Props {
   params: { slug: string };
 }
 
+function isValidWordSlug(slug: string) {
+  return WORD_SLUG_PATTERN.test(slug);
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const canonicalPath = `/word/${encodeURIComponent(params.slug.toLowerCase())}`;
+
+  if (!isValidWordSlug(params.slug)) {
+    return {
+      title: "Word not found | UrduMeaning",
+      robots: {
+        index: false,
+        follow: false,
+      },
+      alternates: {
+        canonical: canonicalPath,
+      },
+    };
+  }
 
   try {
     const word = await getWordCached(params.slug);
@@ -223,6 +241,8 @@ function MeaningSection({ meaning }: { meaning: Meaning; index: number }) {
 }
 
 export default async function WordDetailPage({ params }: Props) {
+  if (!isValidWordSlug(params.slug)) notFound();
+
   let word: WordData;
   try {
     word = await getWordCached(params.slug);

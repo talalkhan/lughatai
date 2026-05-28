@@ -90,10 +90,12 @@ Set as App Settings on `lughatai-beta-api` in Azure Portal (or via `az webapp co
 |---------|----------------|
 | `ASPNETCORE_ENVIRONMENT` | `Production` |
 | `ConnectionStrings__Default` | PostgreSQL connection string |
+| `Redis__Enabled` | `false` (Redis is disabled for beta; DB is source of truth) |
+| `Redis__Connection` | empty |
 | `AI__AnthropicApiKey` | Anthropic console → API Keys |
 | `AI__OpenAIApiKey` | OpenAI console → API Keys |
-| `AI__BatchModel` | `claude-haiku-4-5-20251001` |
-| `AI__LiveModel` | `claude-sonnet-4-6` |
+| `AI__BatchModel` | `gpt-4o-mini` |
+| `AI__LiveModel` | `gpt-4o-mini` |
 | `Azure__SpeechKey` | Azure Portal → `lughatai-beta-speech` → Keys |
 | `Azure__SpeechRegion` | `uaenorth` |
 | `Azure__BlobConnection` | Azure Portal → `lughataibetastorage` → Access keys |
@@ -102,7 +104,10 @@ Set as App Settings on `lughatai-beta-api` in Azure Portal (or via `az webapp co
 | `Cors__AllowedOrigins__0` | `https://urdumeaning.com` |
 | `Cors__AllowedOrigins__1` | `https://www.urdumeaning.com` |
 | `Cors__AllowedOrigins__2` | `https://lughatai-beta-web.azurewebsites.net` |
-| `BatchProcessor__Enabled` | `true` during generation, `false` after |
+| `BatchProcessor__Enabled` | `false` |
+| `WordGeneration__Enabled` | `false` until crawler-safe live generation is intentionally re-enabled |
+| `Enrichment__Enabled` | `false` |
+| `Enrichment__MaxPerHour` | `30` |
 | `WEBSITE_RUN_FROM_PACKAGE` | `1` |
 
 > **Rotating API keys:** Azure Portal → `lughatai-beta-api` → Configuration → Application settings.  

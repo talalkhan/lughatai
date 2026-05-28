@@ -49,20 +49,28 @@ try
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
 
-    // Redis
-    var redisConnection = builder.Configuration["Redis:Connection"] ?? "localhost:6379";
-    builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+    // Redis is optional. Production currently runs without it; cache calls become no-ops.
+    var redisEnabled = builder.Configuration.GetValue<bool>("Redis:Enabled", false);
+    var redisConnection = builder.Configuration["Redis:Connection"];
+    if (redisEnabled && !string.IsNullOrWhiteSpace(redisConnection))
     {
-        try
+        builder.Services.AddSingleton(sp =>
         {
-            return ConnectionMultiplexer.Connect(redisConnection);
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "Redis connection failed, cache will be unavailable");
-            return ConnectionMultiplexer.Connect("localhost:6379,abortConnect=false");
-        }
-    });
+            try
+            {
+                return new RedisConnectionProvider(ConnectionMultiplexer.Connect(redisConnection));
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Redis connection failed, cache will be unavailable");
+                return new RedisConnectionProvider(null);
+            }
+        });
+    }
+    else
+    {
+        builder.Services.AddSingleton(_ => new RedisConnectionProvider(null));
+    }
 
     // HTTP clients — 90s timeout prevents hung connections from stalling the batch processor
     builder.Services.AddHttpClient("claude",  c => c.Timeout = TimeSpan.FromSeconds(90));

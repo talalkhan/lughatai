@@ -371,12 +371,13 @@ To restore Claude: go to https://console.anthropic.com → Plans & Billing → a
 
 | Config key | Current Azure value | Notes |
 |------------|---------------------|-------|
-| `AI:BatchModel` | `claude-haiku-4-5` | Used by WordEnrichmentProcessor (when enabled) |
-| `AI:LiveModel` | `claude-sonnet-4-6` | Used by WordService live generation (when enabled) |
+| `AI:BatchModel` | `gpt-4o-mini` | Used by WordEnrichmentProcessor and Roman Urdu fallback (when enabled) |
+| `AI:LiveModel` | `gpt-4o-mini` | Used by WordService live generation (currently disabled in production) |
 
-Both return HTTP 400 currently because Anthropic account has $0. Not confirmed invalid.
-Code has a `gpt-*` shortcut: if BatchModel starts with "gpt-", AIService routes directly
-to OpenAI with no Claude attempt. Set `AI__BatchModel=gpt-4o-mini` to use OpenAI for batch.
+Claude returns HTTP 400 currently because Anthropic account has $0. Not confirmed invalid.
+Code has a `gpt-*` shortcut: if BatchModel or LiveModel starts with "gpt-", AIService routes
+directly to OpenAI with no Claude attempt. Roman Urdu interpretation also routes to OpenAI
+when `AI__BatchModel` starts with `gpt-`.
 
 **To verify model names:** add Anthropic credits, then set `WordGeneration__Enabled=true`
 in Azure and watch App Insights Dependencies — 200 = model is valid, 400 = wrong name.
@@ -398,14 +399,15 @@ Two master on/off switches guard against bot-triggered AI spend:
 
 | Config key | Default (appsettings.json) | Production (Azure) | What it controls |
 |---|---|---|---|
-| `WordGeneration:Enabled` | `true` | `true` | Live AI generation in `WordService` for single words not in DB |
+| `WordGeneration:Enabled` | `true` | `false` | Live AI generation in `WordService` for single words not in DB |
 | `Enrichment:Enabled` | `false` | `false` | Background enrichment in `WordEnrichmentProcessor` |
 
-**`WordGeneration:Enabled` is `true` by default** — real users can look up any word.
-Multi-word phrases (words containing a space) are blocked in code regardless of this flag:
-a bot crawled URLs like `GET /api/word/matrix%20calculation` at ~7/min, none of which
-are in the DB, each triggering an AI call. The space guard returns 404 immediately for
-any phrase, so bots can't trigger AI spend. Single words go through normally.
+**`WordGeneration:Enabled` is `false` in production as of 2026-05-27 night.**
+Keep it off until live generation is intentionally re-enabled with active monitoring.
+The code also blocks crawler-shaped slugs before generation: whitespace, encoded `%...`
+URLs, `+`, hyphenated/non-alpha slugs, and any normalized value that is not a clean
+single English token. This protects against crawlers hitting arbitrary `/word/...` pages
+and turning SSR into AI spend.
 
 **`WordGeneration:Enabled=false`** is an emergency kill switch — set it in Azure App
 Service config (no deployment needed) to freeze new word generation if AI costs spike.

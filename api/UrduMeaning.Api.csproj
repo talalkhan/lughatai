@@ -8,6 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="appsettings.Development.json" />
+    <Content Remove="appsettings.Development.json" />
+    <None Remove="publish\**" />
+    <Content Remove="publish\**" />
+    <Compile Remove="publish\**" />
     <None Update="Prompts\ai_system_prompt.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

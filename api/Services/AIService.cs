@@ -266,12 +266,16 @@ public class AIService : IWordAIService
 
     public async Task<string?> InterpretRomanUrduAsync(string romanUrdu)
     {
+        var model = _config["AI:BatchModel"] ?? "claude-haiku-4-5-20251001";
+        if (model.StartsWith("gpt-", StringComparison.OrdinalIgnoreCase))
+            return await InterpretRomanUrduWithOpenAIAsync(romanUrdu, model);
+
         var apiKey = _config["AI:AnthropicApiKey"];
         if (string.IsNullOrEmpty(apiKey)) return null;
 
         var payload = new
         {
-            model = _config["AI:BatchModel"] ?? "claude-haiku-4-5-20251001",
+            model,
             max_tokens = 50,
             system = "You are a Roman Urdu to English translator. The user will give you a word or phrase written in Roman Urdu (Urdu transliterated into Latin script). Reply with ONLY the single best English translation word. No explanation, no punctuation, just the word.",
             messages = new[] { new { role = "user", content = romanUrdu } }
@@ -300,6 +304,53 @@ public class AIService : IWordAIService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Roman Urdu interpretation failed for '{Query}'", romanUrdu);
+            return null;
+        }
+    }
+
+    private async Task<string?> InterpretRomanUrduWithOpenAIAsync(string romanUrdu, string model)
+    {
+        var apiKey = _config["AI:OpenAIApiKey"];
+        if (string.IsNullOrWhiteSpace(apiKey) || apiKey == "YOUR_KEY")
+            return null;
+
+        var payload = new
+        {
+            model,
+            max_tokens = 50,
+            messages = new[]
+            {
+                new
+                {
+                    role = "system",
+                    content = "You are a Roman Urdu to English translator. The user will give you a word or phrase written in Roman Urdu (Urdu transliterated into Latin script). Reply with ONLY the single best English translation word. No explanation, no punctuation, just the word."
+                },
+                new { role = "user", content = romanUrdu }
+            }
+        };
+
+        try
+        {
+            var client = _httpClientFactory.CreateClient("openai");
+            client.DefaultRequestHeaders.Clear();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+            var json = JsonSerializer.Serialize(payload);
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/chat/completions")
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            };
+            using var response = await client.SendAsync(request);
+            if (!response.IsSuccessStatusCode) return null;
+
+            var body = await response.Content.ReadAsStringAsync();
+            var parsed = JsonNode.Parse(body);
+            var word = parsed?["choices"]?[0]?["message"]?["content"]?.GetValue<string>()?.Trim().ToLowerInvariant();
+            return string.IsNullOrWhiteSpace(word) ? null : word;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Roman Urdu interpretation via OpenAI failed for '{Query}'", romanUrdu);
             return null;
         }
     }
