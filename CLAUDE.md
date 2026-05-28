@@ -117,7 +117,8 @@ Create `api/appsettings.Development.json` (never commit secrets):
     "AllowedOrigins": ["http://localhost:3000"]
   },
   "WordGeneration": {
-    "Enabled": true
+    "Enabled": true,
+    "RequireApprovedWord": true
   },
   "Enrichment": {
     "Enabled": true,
@@ -400,6 +401,7 @@ Two master on/off switches guard against bot-triggered AI spend:
 | Config key | Default (appsettings.json) | Production (Azure) | What it controls |
 |---|---|---|---|
 | `WordGeneration:Enabled` | `true` | `false` | Live AI generation in `WordService` for single words not in DB |
+| `WordGeneration:RequireApprovedWord` | `true` | `true` | Blocks live AI generation unless the missing word already exists in `approved_words` |
 | `Enrichment:Enabled` | `false` | `false` | Background enrichment in `WordEnrichmentProcessor` |
 
 **`WordGeneration:Enabled` is `false` in production as of 2026-05-27 night.**
@@ -408,6 +410,15 @@ The code also blocks crawler-shaped slugs before generation: whitespace, encoded
 URLs, `+`, hyphenated/non-alpha slugs, and any normalized value that is not a clean
 single English token. This protects against crawlers hitting arbitrary `/word/...` pages
 and turning SSR into AI spend.
+
+Live generation also requires whitelist membership by default. Keep
+`WordGeneration:RequireApprovedWord=true`; otherwise clean alphabetic crawler strings like
+`producedunderfactorysupervision` can be sent to AI, hallucinated, and saved permanently.
+`approved_words` is the durable validity table; `word_queue` is only batch processing state
+and may be empty in production. Use `scripts/populate_approved_words_from_bulk.ps1` to
+load the generated 340k-word list into `approved_words`, and use
+`scripts/audit_unqueued_definitions.sql` plus `scripts/cleanup_unapproved_definitions.sql`
+to inspect/quarantine existing bad generated rows before cleanup.
 
 Temporary crawler control: valid single-word `/word/...` pages can still be crawled at high
 volume and force SSR to call `/api/word/{word}`. Until CDN caching/WAF rules are in place,

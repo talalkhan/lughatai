@@ -8,6 +8,7 @@ public class AppDbContext : DbContext
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
     public DbSet<WordDefinition> WordDefinitions { get; set; }
+    public DbSet<ApprovedWord> ApprovedWords { get; set; }
     public DbSet<WordQueue> WordQueue { get; set; }
     public DbSet<User> Users { get; set; }
     public DbSet<UserFavorite> UserFavorites { get; set; }
@@ -34,6 +35,18 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.WordLower).HasDatabaseName("idx_word_lower");
             entity.HasIndex(e => e.LookupCount).HasDatabaseName("idx_lookup_count")
                   .IsDescending();
+        });
+
+        modelBuilder.Entity<ApprovedWord>(entity =>
+        {
+            entity.ToTable("approved_words");
+            entity.HasKey(e => e.Word);
+            entity.Property(e => e.Word).HasColumnName("word").IsRequired();
+            entity.Property(e => e.Source).HasColumnName("source").IsRequired().HasDefaultValue("manual");
+            entity.Property(e => e.Priority).HasColumnName("priority").HasDefaultValue(3);
+            entity.Property(e => e.CreatedAt).HasColumnName("created_at")
+                  .HasDefaultValueSql("now()");
+            entity.HasIndex(e => e.Priority).HasDatabaseName("idx_approved_words_priority");
         });
 
         modelBuilder.Entity<WordQueue>(entity =>

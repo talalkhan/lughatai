@@ -201,6 +201,39 @@ namespace UrduMeaning.Api.Migrations
                     b.ToTable("user_history", (string)null);
                 });
 
+            modelBuilder.Entity("UrduMeaning.Api.Models.ApprovedWord", b =>
+                {
+                    b.Property<string>("Word")
+                        .HasColumnType("text")
+                        .HasColumnName("word");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<int>("Priority")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(3)
+                        .HasColumnName("priority");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("text")
+                        .HasDefaultValue("manual")
+                        .HasColumnName("source");
+
+                    b.HasKey("Word");
+
+                    b.HasIndex("Priority")
+                        .HasDatabaseName("idx_approved_words_priority");
+
+                    b.ToTable("approved_words", (string)null);
+                });
+
             modelBuilder.Entity("UrduMeaning.Api.Models.WordDefinition", b =>
                 {
                     b.Property<int>("Id")

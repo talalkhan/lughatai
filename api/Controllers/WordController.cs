@@ -43,10 +43,16 @@ public class WordController : ControllerBase
         {
             // Two distinct cases:
             // 1. WordGeneration disabled → word simply not in dictionary → 404
-            // 2. WordGeneration enabled but AI failed → service error → 503
+            // 2. WordGeneration requires approval and the word is unapproved → 404
+            // 3. WordGeneration enabled but AI failed → service error → 503
             var generationEnabled = _config.GetValue<bool>("WordGeneration:Enabled", false);
             if (!generationEnabled)
                 return NotFound(new { error = "Word not found" });
+            if (_config.GetValue<bool>("WordGeneration:RequireApprovedWord", true)
+                && !await _repo.IsApprovedWordAsync(word.Trim().ToLowerInvariant()))
+            {
+                return NotFound(new { error = "Word not found" });
+            }
             return StatusCode(503, new { error = "Service temporarily unavailable" });
         }
 

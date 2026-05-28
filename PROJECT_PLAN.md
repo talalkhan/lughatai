@@ -8,10 +8,10 @@
 ## Current Status
 
 ```
-Last updated  : 2026-05-27 (night)
+Last updated  : 2026-05-28
 Updated by    : Codex GPT-5
 Active phase  : Live (beta deployed)
-Current task  : —
+Current task  : Approved-word whitelist for live generation
 Next task     : Phase 6 (Monetization) or expand word database beyond 45k
 ```
 
@@ -48,6 +48,7 @@ Next task     : Phase 6 (Monetization) or expand word database beyond 45k
 - **2026-05-27 Claude API credit drain fixed (round 2 — crawler-triggered enrichment):** App Insights revealed search engine crawlers hitting the sitemap (10k word URLs) were triggering `WordEnrichmentProcessor` on every page, each attempt calling Claude (which returned 400 on every call due to wrong model name `claude-haiku-4-5-20251001`) then falling back to OpenAI. Three fixes: (1) Fixed model name to `claude-haiku-4-5` in appsettings.json and all Bicep. (2) Added `TryConsumeRateLimit()` to `WordEnrichmentProcessor` — max 30 enrichments/hour (configurable via `Enrichment:MaxPerHour`). (3) Added `React.cache()` to `web/app/word/[slug]/page.tsx` so `generateMetadata` and page component share one API call instead of making two. All documented in `CLAUDE.md` under "AI Cost Controls".
 - **2026-05-27 Claude API credit drain fixed (round 3 — live generation crawler flood):** Production App Insights showed frequent `/api/word/{word}` calls from the Azure-hosted Next.js SSR frontend, driven by external crawler hits to arbitrary `/word/...` pages. Immediate production controls were applied: `WordGeneration__Enabled=false`, `Redis__Enabled=false`, `Redis__Connection=''`, `AI__BatchModel=gpt-4o-mini`, and `AI__LiveModel=gpt-4o-mini`. API was redeployed with stricter guards: `/api/word/{word}` rejects whitespace, encoded, `+`, and non-alpha slugs before DB/AI work; live AI generation is limited to clean single English tokens only; Roman Urdu AI interpretation routes to OpenAI when BatchModel is `gpt-*`; Redis is a no-op when disabled. The Next.js word route now applies the same clean single-word slug rule before SSR calls the API, so invalid crawler URLs 404 at the frontend instead of reaching App Service. Verification: known word `mathematics` returned 200, phrase and repeated-encoded slugs returned 404, and App Insights showed no Anthropic/OpenAI dependency calls or Redis warnings after deployment.
 - **2026-05-27 emergency crawler throttle:** App Insights later showed crawlers were also walking valid single-word pages, so the API still saw many fast `429` responses from Azure-hosted SSR even though AI dependencies were stopped. Temporary SEO tradeoff: word URLs were removed from `sitemap.xml`, `/word/` was added to `robots.txt`, and Next.js middleware now returns a cheap `429` with `X-Robots-Tag: noindex,nofollow` for recognized crawler user agents and non-browser document requests before SSR can call the API. Remove or relax this after bot controls/CDN caching are in place.
+- **2026-05-28 live generation validity guard:** Live cache-miss AI generation now requires `approved_words` membership by default via `WordGeneration:RequireApprovedWord=true`, preventing clean alphabetic crawler concatenations like `producedunderfactorysupervision` from being generated and saved. `approved_words` is the durable validity whitelist; `word_queue` remains batch-processing state and can be empty in production. Bicep now keeps `WordGeneration__Enabled=false` by default and sets `WordGeneration__RequireApprovedWord=true`. Added scripts to populate approvals from queue/bulk word-list sources and to audit/quarantine/delete unapproved generated rows.
 
 ### At-a-Glance Progress
 
@@ -1185,6 +1186,7 @@ Next task     : Phase 6 (Monetization) or expand word database beyond 45k
 
 | Date | Agent | Task | Notes |
 |------|-------|------|-------|
+| 2026-05-28 | Codex GPT-5 | Approved-word whitelist | Added `approved_words` as the live generation validity gate, kept `word_queue` as batch state, corrected Bicep live-generation defaults, and added scripts for approval population plus unapproved-row audit/quarantine cleanup. |
 | 2026-05-24 | Claude Sonnet 4.6 | Beta deployment complete | API on Azure App Service, Next.js frontend on same B2 plan ($0 extra), urdumeaning.com live via Cloudflare DNS, 45,500 words restored to Azure PostgreSQL, automated weekly Blob Storage backups, full docs in docs/DEPLOYMENT.md |
 | 2026-05-24 | Codex GPT-5 | Launch analytics and SEO instrumentation | Added env-driven GA4 and Plausible scripts, Google/Bing verification metadata, canonical/Open Graph metadata tightening, homepage JSON-LD, and deployment docs for launch env vars |
 | 2026-05-24 | Codex GPT-5 | UrduMeaning launch rebrand | Rebranded the public app from LughatAI to UrduMeaning across metadata, UI copy, schema URLs, PWA assets, browser storage keys, and API project filenames while leaving existing DB and infra slugs intact to avoid launch-week migration churn |

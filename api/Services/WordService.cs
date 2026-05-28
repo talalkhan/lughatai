@@ -80,6 +80,16 @@ public class WordService : IWordService
                 if (!_config.GetValue<bool>("WordGeneration:Enabled", true))
                     return null;
 
+                // Deterministic validity gate: live generation only runs for words
+                // in approved_words. This table is the durable whitelist; word_queue
+                // is operational batch state and may be empty in production.
+                if (_config.GetValue<bool>("WordGeneration:RequireApprovedWord", true)
+                    && !await _repo.IsApprovedWordAsync(word))
+                {
+                    _logger.LogInformation("Skipped live generation for unapproved word '{Word}'", word);
+                    return null;
+                }
+
                 try
                 {
                     var generated = await _ai.GenerateWordAsync(word, usePremium: true);

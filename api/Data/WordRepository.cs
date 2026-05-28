@@ -8,6 +8,8 @@ namespace UrduMeaning.Api.Data;
 public interface IWordRepository
 {
     Task<WordData?> GetWordAsync(string wordLower);
+    Task<bool> IsQueuedWordAsync(string wordLower);
+    Task<bool> IsApprovedWordAsync(string wordLower);
     Task SaveWordAsync(string word, WordData data);
     Task IncrementLookupCountAsync(string wordLower);
     Task<IEnumerable<SearchResult>> SearchAsync(string prefix, int limit);
@@ -59,6 +61,20 @@ public class WordRepository : IWordRepository
         var json = await conn.QuerySingleOrDefaultAsync<string>(sql, new { wordLower });
         if (json == null) return null;
         return JsonSerializer.Deserialize<WordData>(json, JsonOpts);
+    }
+
+    public async Task<bool> IsQueuedWordAsync(string wordLower)
+    {
+        using var conn = Connection();
+        var sql = "SELECT EXISTS (SELECT 1 FROM word_queue WHERE word = @wordLower)";
+        return await conn.ExecuteScalarAsync<bool>(sql, new { wordLower });
+    }
+
+    public async Task<bool> IsApprovedWordAsync(string wordLower)
+    {
+        using var conn = Connection();
+        var sql = "SELECT EXISTS (SELECT 1 FROM approved_words WHERE word = @wordLower)";
+        return await conn.ExecuteScalarAsync<bool>(sql, new { wordLower });
     }
 
     public async Task SaveWordAsync(string word, WordData data)
@@ -303,8 +319,23 @@ public class WordRepository : IWordRepository
     public async Task AddToQueueAsync(IEnumerable<string> words, int priority = 3)
     {
         using var conn = Connection();
-        var sql = "INSERT INTO word_queue (word, priority) VALUES (@word, @priority) ON CONFLICT (word) DO NOTHING";
-        await conn.ExecuteAsync(sql, words.Select(w => new { word = w.Trim().ToLowerInvariant(), priority }));
+        var cleanedWords = words
+            .Select(w => w.Trim().ToLowerInvariant())
+            .Where(w => !string.IsNullOrWhiteSpace(w))
+            .Distinct()
+            .Select(w => new { word = w, priority })
+            .ToArray();
+
+        var sql = """
+            INSERT INTO approved_words (word, source, priority)
+            VALUES (@word, 'admin_queue', @priority)
+            ON CONFLICT (word) DO UPDATE
+            SET priority = LEAST(approved_words.priority, EXCLUDED.priority)
+            """;
+        await conn.ExecuteAsync(sql, cleanedWords);
+
+        sql = "INSERT INTO word_queue (word, priority) VALUES (@word, @priority) ON CONFLICT (word) DO NOTHING";
+        await conn.ExecuteAsync(sql, cleanedWords);
     }
 
     public async Task RetryFailedAsync()
