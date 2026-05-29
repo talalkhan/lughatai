@@ -54,6 +54,33 @@ function Write-Info([string]$m) { Write-Host "  [..] $m" -ForegroundColor White 
 function Write-Warn([string]$m) { Write-Host "  [!!] $m" -ForegroundColor Yellow }
 function Write-Err([string]$m)  { Write-Host "  [XX] $m" -ForegroundColor Red }
 
+function Convert-ToPsqlConnStr([string]$connStr) {
+    if ([string]::IsNullOrWhiteSpace($connStr)) { return $connStr }
+    if ($connStr -notmatch ";" -or $connStr -match "\bhost=") { return $connStr }
+
+    $parts = @{}
+    $connStr -split ";" | ForEach-Object {
+        if ($_ -match "^(.*?)=(.*)$") {
+            $parts[$matches[1].Trim().ToLowerInvariant()] = $matches[2].Trim()
+        }
+    }
+
+    $hostName = $parts["host"]
+    $port     = if ($parts.ContainsKey("port")) { $parts["port"] } else { "5432" }
+    $dbName   = if ($parts.ContainsKey("database")) { $parts["database"] } else { $parts["dbname"] }
+    $userName = if ($parts.ContainsKey("username")) { $parts["username"] } else { $parts["user id"] }
+    $password = $parts["password"]
+
+    if ([string]::IsNullOrWhiteSpace($hostName) -or
+        [string]::IsNullOrWhiteSpace($dbName) -or
+        [string]::IsNullOrWhiteSpace($userName) -or
+        [string]::IsNullOrWhiteSpace($password)) {
+        return $connStr
+    }
+
+    return "host=$hostName port=$port dbname=$dbName user=$userName password=$password sslmode=require"
+}
+
 function Normalize-Headword([string]$word) {
     return $word.Trim().ToLowerInvariant()
 }
@@ -149,6 +176,8 @@ if ($AzureDb) {
         Write-Host "  Pass -AzureConnStr or set LUGHATAI_AZURE_PG_CONN in your shell." -ForegroundColor Yellow
         exit 1
     }
+
+    $AzureConnStr = Convert-ToPsqlConnStr $AzureConnStr
 
     Write-Host ""
     Write-Host "  *** AZURE MODE ***" -ForegroundColor Cyan
