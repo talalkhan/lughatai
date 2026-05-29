@@ -40,7 +40,7 @@ param(
     # Write definitions to Azure PostgreSQL in addition to local Docker.
     # word_queue tracking (pending/done/failed) always stays on local Docker.
     [switch]$AzureDb,
-    [string]$AzureConnStr = "host=lughatai-beta-db.postgres.database.azure.com port=5432 dbname=lughatai user=lughatadmin password=NlehvAZp8NqwNvjh%755 sslmode=require"
+    [string]$AzureConnStr = $env:LUGHATAI_AZURE_PG_CONN
 )
 
 $ErrorActionPreference = "Stop"
@@ -144,6 +144,12 @@ if (-not (Test-Path $TrackingFile)) {
 }
 
 if ($AzureDb) {
+    if ([string]::IsNullOrWhiteSpace($AzureConnStr)) {
+        Write-Host "  AzureDb was requested, but no Azure connection string was provided." -ForegroundColor Red
+        Write-Host "  Pass -AzureConnStr or set LUGHATAI_AZURE_PG_CONN in your shell." -ForegroundColor Yellow
+        exit 1
+    }
+
     Write-Host ""
     Write-Host "  *** AZURE MODE ***" -ForegroundColor Cyan
     Write-Host "  Definitions -> Azure PostgreSQL (lughatai-beta-db)" -ForegroundColor Cyan

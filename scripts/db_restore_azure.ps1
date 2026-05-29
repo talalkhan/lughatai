@@ -16,6 +16,7 @@
 # =============================================================================
 
 param(
+    [string]$AzureConnStr = $env:LUGHATAI_AZURE_PG_CONN,
     [switch]$Force
 )
 
@@ -24,11 +25,13 @@ $RepoRoot   = Split-Path $PSScriptRoot -Parent
 $DataDir    = Join-Path $RepoRoot "data"
 $BackupStem = "word_definitions_backup"
 
-$AzureHost = "lughatai-beta-db.postgres.database.azure.com"
-$AzureDb   = "lughatai"
-$AzureUser = "lughatadmin"
-$AzurePass = 'NlehvAZp8NqwNvjh%755'
-$ConnStr   = "host=$AzureHost port=5432 dbname=$AzureDb user=$AzureUser password=$AzurePass sslmode=require"
+if ([string]::IsNullOrWhiteSpace($AzureConnStr)) {
+    Write-Host "Azure connection string is required." -ForegroundColor Red
+    Write-Host "Pass -AzureConnStr or set LUGHATAI_AZURE_PG_CONN in your shell." -ForegroundColor Yellow
+    exit 1
+}
+
+$ConnStr = $AzureConnStr
 
 Add-Type -AssemblyName "System.IO.Compression"
 
