@@ -12,7 +12,7 @@ Last updated  : 2026-05-30
 Updated by    : Codex GPT-5
 Active phase  : Live (beta deployed)
 Current task  : Expand word database using trusted SCOWL/WordNet validation
-Next task     : Collect/load SCOWL-backed core batch 004 when complete
+Next task     : Review/retry remaining 1,027 trusted missing words
 ```
 
 ### Beta Deployment (2026-05-24)
@@ -52,7 +52,7 @@ Next task     : Collect/load SCOWL-backed core batch 004 when complete
 - **2026-05-30 trusted word-source tiering:** Added SCOWL/WordNet source builder and wired trusted dictionary validation into `build_word_quality_tiers.ps1`. Current generated trusted sets: SCOWL 111,481 words, WordNet 86,189 words, combined 146,167. Current tier report: full 19,455, core 93,278, hold 228,154. Azure comparison found 4 missing full words and 56,588 missing core words. OpenAI batch `batch_6a1b08f5d1b8819087d01047a13999fe` completed with 13,896 accepted definitions loaded into Azure (4 enriched, 13,892 core accepted; 104 rows reset to pending due to invalid JSON/schema or headword mismatches).
 - **2026-05-30 SCOWL core batch 002:** Refreshed Azure missing-candidate report after batch 001: 1 missing full word and 42,695 missing core words remained. The 104 rejected batch 001 rows were reviewed as mostly valid English words, so they remained eligible for retry. OpenAI batch `batch_6a1b14a8619881909840f74a8709d45f` completed with 13,900 accepted definitions loaded into Azure (1 enriched, 13,899 core accepted; 100 rows reset to pending due to invalid JSON/schema or headword mismatches).
 - **2026-05-30 SCOWL core batch 003:** Refreshed Azure missing-candidate report after batch 002: 1 missing full word and 28,795 missing core words remained. OpenAI batch `batch_6a1b24e7beb481909aba051d04772037` completed with 13,889 accepted definitions loaded into Azure (1 enriched, 13,888 core accepted; 111 rows reset to pending due to invalid JSON/schema or headword mismatches).
-- **2026-05-30 SCOWL core batch 004:** Refreshed Azure missing-candidate report after batch 003: 1 missing full word and 14,906 missing core words remain. Submitted OpenAI batch `batch_6a1b36e7a1e08190832f3a03ebf76879` with 14,000 words (1 enriched, 13,999 core), pending collection.
+- **2026-05-30 SCOWL core batch 004:** Refreshed Azure missing-candidate report after batch 003: 1 missing full word and 14,906 missing core words remained. OpenAI batch `batch_6a1b36e7a1e08190832f3a03ebf76879` completed with 13,880 accepted definitions loaded into Azure (1 enriched, 13,879 core accepted; 120 rows reset to pending due to invalid JSON/schema or headword mismatches). Post-load Azure comparison shows 1 full and 1,026 core trusted candidates still missing.
 
 ### At-a-Glance Progress
 
