@@ -15,7 +15,9 @@ param(
     [string]$WordListDir = (Join-Path $PSScriptRoot "words"),
     [string]$OutputDir = (Join-Path $PSScriptRoot "words\processed"),
     [int]$FullMaxFrequencyRank = 25000,
-    [int]$CoreMaxFrequencyRank = 50000
+    [int]$CoreMaxFrequencyRank = 50000,
+    [string]$ScowlWords = (Join-Path $PSScriptRoot "words\processed\trusted_scowl_words.txt"),
+    [string]$WordNetWords = (Join-Path $PSScriptRoot "words\processed\trusted_wordnet_words.txt")
 )
 
 $ErrorActionPreference = "Stop"
@@ -54,19 +56,27 @@ $summaryPath = Join-Path $OutputDir "word_quality_tiers_summary.txt"
 
 Write-H "Loading frequency ranks"
 $freqLines = [System.IO.File]::ReadAllLines((Resolve-Path $FreqCache), [System.Text.Encoding]::UTF8)
-$freqRank = [System.Collections.Generic.Dictionary[string, int]]::new($freqLines.Length, [System.StringComparer]::OrdinalIgnoreCase)
+$fullFrequencyWords = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$coreFrequencyWords = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 for ($i = 0; $i -lt $freqLines.Length; $i++) {
     $line = $freqLines[$i]
     $spaceIdx = $line.IndexOf(" ")
     $word = if ($spaceIdx -gt 0) { $line.Substring(0, $spaceIdx).Trim().ToLowerInvariant() } else { $line.Trim().ToLowerInvariant() }
-    if ($word -and -not ($freqRank.ContainsKey($word))) {
-        $freqRank.Add($word, $i + 1)
+    if (-not (Test-AsciiLowerWord $word)) { continue }
+
+    $rank = $i + 1
+    if ($rank -le $CoreMaxFrequencyRank) {
+        [void]$coreFrequencyWords.Add($word)
+    }
+    if ($rank -le $FullMaxFrequencyRank) {
+        [void]$fullFrequencyWords.Add($word)
     }
 }
-Write-Host "  Frequency words: $($freqRank.Count)" -ForegroundColor Green
+Write-Host "  Full frequency words: $($fullFrequencyWords.Count)" -ForegroundColor Green
+Write-Host "  Core frequency words: $($coreFrequencyWords.Count)" -ForegroundColor Green
 
 Write-H "Loading curated domain words"
-$domainSources = [System.Collections.Generic.Dictionary[string, System.Collections.Generic.List[string]]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$domainSources = [System.Collections.Generic.Dictionary[string,System.Collections.Generic.List[string]]]::new([System.StringComparer]::OrdinalIgnoreCase)
 $domainFiles = Get-ChildItem $WordListDir -File -Filter *.txt | Sort-Object Name
 foreach ($file in $domainFiles) {
     foreach ($line in [System.IO.File]::ReadLines($file.FullName)) {
@@ -81,9 +91,43 @@ foreach ($file in $domainFiles) {
 }
 Write-Host "  Curated domain words: $($domainSources.Count)" -ForegroundColor Green
 
+Write-H "Loading trusted dictionary words"
+$trustedWords = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$trustedSources = [System.Collections.Generic.Dictionary[string,System.Collections.Generic.List[string]]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+function Add-TrustedWord([string]$word, [string]$source) {
+    $w = $word.Trim().ToLowerInvariant()
+    if (-not (Test-AsciiLowerWord $w)) { return }
+    [void]$trustedWords.Add($w)
+    if (-not ($trustedSources.ContainsKey($w))) {
+        $trustedSources.Add($w, [System.Collections.Generic.List[string]]::new())
+    }
+    $trustedSources[$w].Add($source)
+}
+
+if (Test-Path $ScowlWords) {
+    foreach ($line in [System.IO.File]::ReadLines((Resolve-Path $ScowlWords))) {
+        Add-TrustedWord $line "scowl"
+    }
+    Write-Host "  SCOWL words loaded from: $ScowlWords" -ForegroundColor White
+} else {
+    Write-Host "  SCOWL words file not found: $ScowlWords" -ForegroundColor Yellow
+}
+
+if (Test-Path $WordNetWords) {
+    foreach ($line in [System.IO.File]::ReadLines((Resolve-Path $WordNetWords))) {
+        Add-TrustedWord $line "wordnet"
+    }
+    Write-Host "  WordNet words loaded from: $WordNetWords" -ForegroundColor White
+} else {
+    Write-Host "  WordNet words file not found: $WordNetWords" -ForegroundColor Yellow
+}
+
+Write-Host "  Trusted dictionary words: $($trustedWords.Count)" -ForegroundColor Green
+
 Write-H "Parsing bulk source and classifying"
 $rx = [regex]"^\s*\('([^']+)',\s*([1-5])\),?"
-$sourceWords = [System.Collections.Generic.Dictionary[string, int]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$sourceWords = [System.Collections.Generic.Dictionary[string,int]]::new([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($line in [System.IO.File]::ReadLines((Resolve-Path $BulkSql))) {
     $match = $rx.Match($line)
     if (-not $match.Success) { continue }
@@ -109,8 +153,11 @@ $reject = [System.Collections.Generic.List[string]]::new()
 foreach ($entry in $sourceWords.GetEnumerator()) {
     $word = $entry.Key
     $sourcePriority = $entry.Value
-    $rankValue = if ($freqRank.ContainsKey($word)) { $freqRank[$word] } else { $null }
+    $isFullFrequency = $fullFrequencyWords.Contains($word)
+    $isCoreFrequency = $coreFrequencyWords.Contains($word)
+    $frequencyBucket = if ($isFullFrequency) { "full" } elseif ($isCoreFrequency) { "core" } else { "" }
     $domainValue = if ($domainSources.ContainsKey($word)) { ($domainSources[$word] | Sort-Object -Unique) -join ";" } else { "" }
+    $trustedValue = if ($trustedSources.ContainsKey($word)) { ($trustedSources[$word] | Sort-Object -Unique) -join ";" } else { "" }
 
     $mode = "hold"
     $tierReason = "long_tail_unvalidated"
@@ -121,15 +168,18 @@ foreach ($entry in $sourceWords.GetEnumerator()) {
     } elseif ($domainValue -ne "") {
         $mode = "full"
         $tierReason = "curated_domain_list"
-    } elseif ($rankValue -ne $null -and $rankValue -le $FullMaxFrequencyRank) {
+    } elseif ($isFullFrequency) {
         $mode = "full"
         $tierReason = "frequency_rank_le_$FullMaxFrequencyRank"
     } elseif ($sourcePriority -le 2) {
         $mode = "full"
         $tierReason = "source_priority_$sourcePriority"
-    } elseif ($rankValue -ne $null -and $rankValue -le $CoreMaxFrequencyRank) {
+    } elseif ($isCoreFrequency) {
         $mode = "core"
         $tierReason = "frequency_rank_le_$CoreMaxFrequencyRank"
+    } elseif ($trustedWords.Contains($word)) {
+        $mode = "core"
+        $tierReason = "trusted_dictionary"
     }
 
     switch ($mode) {
@@ -144,12 +194,13 @@ foreach ($entry in $sourceWords.GetEnumerator()) {
         generation_mode = $mode
         reason          = $tierReason
         source_priority = $sourcePriority
-        frequency_rank  = $rankValue
+        frequency_bucket = $frequencyBucket
         domain_sources  = $domainValue
+        trusted_sources  = $trustedValue
     })
 }
 
-$orderedRows = $rows | Sort-Object @{Expression="generation_mode"; Ascending=$true}, @{Expression="frequency_rank"; Ascending=$true}, word
+$orderedRows = $rows | Sort-Object @{Expression="generation_mode"; Ascending=$true}, @{Expression="frequency_bucket"; Ascending=$true}, word
 $orderedRows | Export-Csv $csvPath -NoTypeInformation -Encoding UTF8
 
 $full   | Sort-Object -Unique | Set-Content $fullPath -Encoding ascii
@@ -162,6 +213,8 @@ $summary = @(
     "Bulk source: $BulkSql"
     "Frequency cache: $FreqCache"
     "Domain list dir: $WordListDir"
+    "SCOWL words: $ScowlWords"
+    "WordNet words: $WordNetWords"
     ""
     "total=$($sourceWords.Count)"
     "full=$($full.Count)"
