@@ -12,7 +12,7 @@ Last updated  : 2026-05-30
 Updated by    : Codex GPT-5
 Active phase  : Live (beta deployed)
 Current task  : Expand word database using trusted SCOWL/WordNet validation
-Next task     : Collect/load SCOWL trusted retry batch 005 when complete
+Next task     : Manually review or stricter-retry the final 29 trusted failures
 ```
 
 ### Beta Deployment (2026-05-24)
@@ -53,7 +53,7 @@ Next task     : Collect/load SCOWL trusted retry batch 005 when complete
 - **2026-05-30 SCOWL core batch 002:** Refreshed Azure missing-candidate report after batch 001: 1 missing full word and 42,695 missing core words remained. The 104 rejected batch 001 rows were reviewed as mostly valid English words, so they remained eligible for retry. OpenAI batch `batch_6a1b14a8619881909840f74a8709d45f` completed with 13,900 accepted definitions loaded into Azure (1 enriched, 13,899 core accepted; 100 rows reset to pending due to invalid JSON/schema or headword mismatches).
 - **2026-05-30 SCOWL core batch 003:** Refreshed Azure missing-candidate report after batch 002: 1 missing full word and 28,795 missing core words remained. OpenAI batch `batch_6a1b24e7beb481909aba051d04772037` completed with 13,889 accepted definitions loaded into Azure (1 enriched, 13,888 core accepted; 111 rows reset to pending due to invalid JSON/schema or headword mismatches).
 - **2026-05-30 SCOWL core batch 004:** Refreshed Azure missing-candidate report after batch 003: 1 missing full word and 14,906 missing core words remained. OpenAI batch `batch_6a1b36e7a1e08190832f3a03ebf76879` completed with 13,880 accepted definitions loaded into Azure (1 enriched, 13,879 core accepted; 120 rows reset to pending due to invalid JSON/schema or headword mismatches). Post-load Azure comparison shows 1 full and 1,026 core trusted candidates still missing.
-- **2026-05-30 SCOWL trusted retry batch 005:** Combined the remaining 1 full and 1,026 core trusted missing candidates and retried all as core-mode priority 3 words to reduce schema failure risk. Submitted OpenAI batch `batch_6a1b412b0f2c8190a32eb4becfc2d602` with 1,027 core words, pending collection.
+- **2026-05-30 SCOWL trusted retry batch 005:** Combined the remaining 1 full and 1,026 core trusted missing candidates and retried all as core-mode priority 3 words to reduce schema failure risk. OpenAI batch `batch_6a1b412b0f2c8190a32eb4becfc2d602` completed with 998 accepted definitions loaded into Azure and 29 failures reset to pending (8 invalid JSON/schema, 21 headword mismatches). Post-load Azure comparison shows only 1 full and 28 core trusted candidates still missing.
 
 ### At-a-Glance Progress
 
