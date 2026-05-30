@@ -168,7 +168,7 @@ $corePromptEscaped = $corePromptJson.Substring(1, $corePromptJson.Length - 2)
 # Pre-build the request template prefix/suffix to avoid repeating the prompt each time
 $reqPrefix = "{`"custom_id`":`""
 # We'll build each line as: {prefix}{customId}`",{middle}{word-escaped}{suffix}
-$reqMiddleTemplate  = "`",`"method`":`"POST`",`"url`":`"/v1/chat/completions`",`"body`":{`"model`":`"$Model`",`"max_tokens`":$MaxTokens,`"messages`":[{`"role`":`"system`",`"content`":`"{0}`"},{`"role`":`"user`",`"content`":`""
+$reqMiddleTemplate  = "`",`"method`":`"POST`",`"url`":`"/v1/chat/completions`",`"body`":{`"model`":`"$Model`",`"max_tokens`":$MaxTokens,`"response_format`":{`"type`":`"json_object`"},`"messages`":[{`"role`":`"system`",`"content`":`"{0}`"},{`"role`":`"user`",`"content`":`""
 $reqSuffix  = "`"}]}}"
 $reqMiddleByStage = @{
     enriched = $reqMiddleTemplate.Replace("{0}", $fullPromptEscaped)
