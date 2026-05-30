@@ -32,7 +32,7 @@ if ([string]::IsNullOrWhiteSpace($AzureConnStr)) {
 }
 
 function Convert-ToPsqlConnStr([string]$connStr) {
-    if ($connStr -notmatch ";" -or $connStr -match "\bhost=") { return $connStr }
+    if ($connStr -notmatch ";") { return $connStr }
     $parts = @{}
     $connStr -split ";" | ForEach-Object {
         if ($_ -match "^(.*?)=(.*)$") {

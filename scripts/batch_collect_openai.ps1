@@ -56,7 +56,7 @@ function Write-Err([string]$m)  { Write-Host "  [XX] $m" -ForegroundColor Red }
 
 function Convert-ToPsqlConnStr([string]$connStr) {
     if ([string]::IsNullOrWhiteSpace($connStr)) { return $connStr }
-    if ($connStr -notmatch ";" -or $connStr -match "\bhost=") { return $connStr }
+    if ($connStr -notmatch ";") { return $connStr }
 
     $parts = @{}
     $connStr -split ";" | ForEach-Object {
