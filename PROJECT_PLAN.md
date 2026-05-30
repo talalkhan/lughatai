@@ -12,7 +12,7 @@ Last updated  : 2026-05-30
 Updated by    : Codex GPT-5
 Active phase  : Live (beta deployed)
 Current task  : Expand word database using trusted SCOWL/WordNet validation
-Next task     : Manually repair final 12 trusted headword-drift failures
+Next task     : Decide whether to enrich held long-tail words or stop generation
 ```
 
 ### Beta Deployment (2026-05-24)
@@ -55,6 +55,7 @@ Next task     : Manually repair final 12 trusted headword-drift failures
 - **2026-05-30 SCOWL core batch 004:** Refreshed Azure missing-candidate report after batch 003: 1 missing full word and 14,906 missing core words remained. OpenAI batch `batch_6a1b36e7a1e08190832f3a03ebf76879` completed with 13,880 accepted definitions loaded into Azure (1 enriched, 13,879 core accepted; 120 rows reset to pending due to invalid JSON/schema or headword mismatches). Post-load Azure comparison shows 1 full and 1,026 core trusted candidates still missing.
 - **2026-05-30 SCOWL trusted retry batch 005:** Combined the remaining 1 full and 1,026 core trusted missing candidates and retried all as core-mode priority 3 words to reduce schema failure risk. OpenAI batch `batch_6a1b412b0f2c8190a32eb4becfc2d602` completed with 998 accepted definitions loaded into Azure and 29 failures reset to pending (8 invalid JSON/schema, 21 headword mismatches). Post-load Azure comparison shows only 1 full and 28 core trusted candidates still missing.
 - **2026-05-30 SCOWL strict retry batch 006:** Hardened `batch_submit_openai.ps1` to request OpenAI JSON-object responses, then retried the final 29 trusted missing words as core-mode priority 3 words with a stricter exact-headword addendum. OpenAI batch `batch_6a1b43c8d98481909dbbcdfb20b49f26` completed with 17 accepted definitions loaded into Azure and 12 headword-mismatch failures reset to pending. Post-load Azure comparison shows only 1 full and 11 core trusted candidates still missing.
+- **2026-05-30 final trusted repair:** Added `repair_batch_headword_mismatches.ps1` and used it to repair the 12 valid JSON rows from batch 006 whose top-level headword drifted. The script anchors each JSON object to the queued word, applies core shape, inserts locally, and marks the queue row done. Reloaded batch 006 to Azure and refreshed candidates: 0 full and 0 core trusted candidates remain missing.
 
 ### At-a-Glance Progress
 
