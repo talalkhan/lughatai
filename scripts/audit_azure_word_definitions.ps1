@@ -126,6 +126,78 @@ WHERE data->'script_variants'->>'nastaliq' IS NULL
    OR data->'script_variants'->>'nastaliq' = ''
 GROUP BY model, COALESCE(data->'_meta'->>'stage', '<missing>')
 ORDER BY missing_nastaliq DESC, model, stage;
+
+\echo '== missing stage inferred by enrichment fields =='
+WITH missing AS (
+  SELECT word, model, data,
+         (
+           (data ? 'etymology' AND data->'etymology' IS NOT NULL AND data->'etymology' <> 'null'::jsonb)
+           OR (data ? 'memory_tip' AND data->'memory_tip' IS NOT NULL AND data->'memory_tip' <> 'null'::jsonb)
+           OR (data ? 'urdu_poetry' AND data->'urdu_poetry' IS NOT NULL AND data->'urdu_poetry' <> 'null'::jsonb)
+           OR (data ? 'urdu_proverb' AND data->'urdu_proverb' IS NOT NULL AND data->'urdu_proverb' <> 'null'::jsonb)
+           OR (data ? 'islamic_reference' AND data->'islamic_reference' IS NOT NULL AND data->'islamic_reference' <> 'null'::jsonb)
+           OR (jsonb_typeof(data->'word_family') = 'array' AND jsonb_array_length(data->'word_family') > 0)
+           OR (jsonb_typeof(data->'related_words'->'see_also') = 'array' AND jsonb_array_length(data->'related_words'->'see_also') > 0)
+           OR (jsonb_typeof(data->'related_words'->'thematic_group') = 'array' AND jsonb_array_length(data->'related_words'->'thematic_group') > 0)
+         ) AS has_enrichment
+  FROM word_definitions
+  WHERE data->'_meta'->>'stage' IS NULL
+)
+SELECT CASE WHEN has_enrichment THEN 'looks_enriched' ELSE 'looks_core_or_unknown' END AS inferred_stage,
+       COUNT(*) AS count
+FROM missing
+GROUP BY has_enrichment
+ORDER BY inferred_stage;
+
+\echo '== missing stage inferred by model =='
+WITH missing AS (
+  SELECT model,
+         (
+           (data ? 'etymology' AND data->'etymology' IS NOT NULL AND data->'etymology' <> 'null'::jsonb)
+           OR (data ? 'memory_tip' AND data->'memory_tip' IS NOT NULL AND data->'memory_tip' <> 'null'::jsonb)
+           OR (data ? 'urdu_poetry' AND data->'urdu_poetry' IS NOT NULL AND data->'urdu_poetry' <> 'null'::jsonb)
+           OR (data ? 'urdu_proverb' AND data->'urdu_proverb' IS NOT NULL AND data->'urdu_proverb' <> 'null'::jsonb)
+           OR (data ? 'islamic_reference' AND data->'islamic_reference' IS NOT NULL AND data->'islamic_reference' <> 'null'::jsonb)
+           OR (jsonb_typeof(data->'word_family') = 'array' AND jsonb_array_length(data->'word_family') > 0)
+           OR (jsonb_typeof(data->'related_words'->'see_also') = 'array' AND jsonb_array_length(data->'related_words'->'see_also') > 0)
+           OR (jsonb_typeof(data->'related_words'->'thematic_group') = 'array' AND jsonb_array_length(data->'related_words'->'thematic_group') > 0)
+         ) AS has_enrichment
+  FROM word_definitions
+  WHERE data->'_meta'->>'stage' IS NULL
+)
+SELECT COALESCE(model, '<null>') AS model,
+       CASE WHEN has_enrichment THEN 'looks_enriched' ELSE 'looks_core_or_unknown' END AS inferred_stage,
+       COUNT(*) AS count
+FROM missing
+GROUP BY model, has_enrichment
+ORDER BY count DESC, model;
+
+\echo '== missing stage sample =='
+WITH missing AS (
+  SELECT word, model, data,
+         (
+           (data ? 'etymology' AND data->'etymology' IS NOT NULL AND data->'etymology' <> 'null'::jsonb)
+           OR (data ? 'memory_tip' AND data->'memory_tip' IS NOT NULL AND data->'memory_tip' <> 'null'::jsonb)
+           OR (data ? 'urdu_poetry' AND data->'urdu_poetry' IS NOT NULL AND data->'urdu_poetry' <> 'null'::jsonb)
+           OR (data ? 'urdu_proverb' AND data->'urdu_proverb' IS NOT NULL AND data->'urdu_proverb' <> 'null'::jsonb)
+           OR (data ? 'islamic_reference' AND data->'islamic_reference' IS NOT NULL AND data->'islamic_reference' <> 'null'::jsonb)
+           OR (jsonb_typeof(data->'word_family') = 'array' AND jsonb_array_length(data->'word_family') > 0)
+           OR (jsonb_typeof(data->'related_words'->'see_also') = 'array' AND jsonb_array_length(data->'related_words'->'see_also') > 0)
+           OR (jsonb_typeof(data->'related_words'->'thematic_group') = 'array' AND jsonb_array_length(data->'related_words'->'thematic_group') > 0)
+         ) AS has_enrichment
+  FROM word_definitions
+  WHERE data->'_meta'->>'stage' IS NULL
+)
+SELECT word,
+       model,
+       CASE WHEN has_enrichment THEN 'looks_enriched' ELSE 'looks_core_or_unknown' END AS inferred_stage,
+       (data ? 'etymology' AND data->'etymology' IS NOT NULL AND data->'etymology' <> 'null'::jsonb) AS has_etymology,
+       (data ? 'memory_tip' AND data->'memory_tip' IS NOT NULL AND data->'memory_tip' <> 'null'::jsonb) AS has_memory_tip,
+       (data ? 'urdu_poetry' AND data->'urdu_poetry' IS NOT NULL AND data->'urdu_poetry' <> 'null'::jsonb) AS has_poetry,
+       left(data->'meanings'->0->>'definition_en', 120) AS definition_en
+FROM missing
+ORDER BY random()
+LIMIT $SampleCount;
 "@
 
 $sql | docker compose exec -T postgres psql $conn -v ON_ERROR_STOP=1
