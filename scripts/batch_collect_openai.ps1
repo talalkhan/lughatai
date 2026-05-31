@@ -134,6 +134,40 @@ function Apply-GenerationShape([System.Text.Json.Nodes.JsonNode]$wordNode, [stri
     $metaObj.Remove("stage") | Out-Null
     $metaObj.Add("stage", [System.Text.Json.Nodes.JsonValue]::Create($stage))
 
+    # The frontend's most visible Urdu field is script_variants.nastaliq.
+    # Store it consistently with the first/main meaning's primary translation.
+    $meaningsNode = $obj["meanings"]
+    if ($null -ne $meaningsNode -and $meaningsNode -is [System.Text.Json.Nodes.JsonArray] -and $meaningsNode.AsArray().Count -gt 0) {
+        $leadMeaning = $meaningsNode.AsArray()[0]
+        $translationsNode = if ($null -ne $leadMeaning) { $leadMeaning["translations"] } else { $null }
+        if ($null -ne $translationsNode) {
+            $primaryNode = $translationsNode["primary"]
+            $primaryRomanNode = $translationsNode["primary_roman"]
+            $primary = if ($null -ne $primaryNode) { [string]$primaryNode.GetValue[string]() } else { "" }
+            $primaryRoman = if ($null -ne $primaryRomanNode) { [string]$primaryRomanNode.GetValue[string]() } else { "" }
+
+            $scriptNode = $obj["script_variants"]
+            if ($null -eq $scriptNode) {
+                $scriptObj = [System.Text.Json.Nodes.JsonObject]::new()
+                $obj.Add("script_variants", $scriptObj)
+            } else {
+                $scriptObj = $scriptNode.AsObject()
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($primary)) {
+                $scriptObj.Remove("nastaliq") | Out-Null
+                $scriptObj.Add("nastaliq", [System.Text.Json.Nodes.JsonValue]::Create($primary.Trim()))
+            }
+            if (-not [string]::IsNullOrWhiteSpace($primaryRoman)) {
+                $scriptObj.Remove("roman_urdu") | Out-Null
+                $scriptObj.Add("roman_urdu", [System.Text.Json.Nodes.JsonValue]::Create($primaryRoman.Trim()))
+            }
+            if ($null -eq $scriptObj["devanagari"]) {
+                $scriptObj.Add("devanagari", $null)
+            }
+        }
+    }
+
     if ($stage -eq "core") {
         # Use .Remove() — assigning $null to a JsonObject indexer in PowerShell
         # does NOT remove the key; only .Remove() reliably does.

@@ -187,6 +187,7 @@ public class AIService : IWordAIService
         {
             model,
             max_tokens = 8192,   // match Claude budget; GPT-4o-mini supports up to 16384
+            response_format = new { type = "json_object" },
             messages = new[]
             {
                 new { role = "system", content = prompt },
@@ -240,6 +241,8 @@ public class AIService : IWordAIService
         if (stage == WordGenerationStage.Core)
             ApplyCoreShape(data);
 
+        NormalizePrimaryDisplay(data);
+
         data.Meta ??= new MetaInfo();
         data.Meta.GeneratedBy = generatedBy;
         data.Meta.GeneratedAt = DateTime.UtcNow.ToString("O");
@@ -262,6 +265,21 @@ public class AIService : IWordAIService
         data.UrduPoetry = null;
         data.UrduProverb = null;
         data.IslamicReference = null;
+    }
+
+    private static void NormalizePrimaryDisplay(WordData data)
+    {
+        var leadTranslation = data.Meanings.FirstOrDefault()?.Translations;
+        if (leadTranslation is null)
+            return;
+
+        data.ScriptVariants ??= new ScriptVariants();
+
+        if (!string.IsNullOrWhiteSpace(leadTranslation.Primary))
+            data.ScriptVariants.Nastaliq = leadTranslation.Primary.Trim();
+
+        if (!string.IsNullOrWhiteSpace(leadTranslation.PrimaryRoman))
+            data.ScriptVariants.RomanUrdu = leadTranslation.PrimaryRoman.Trim();
     }
 
     public async Task<string?> InterpretRomanUrduAsync(string romanUrdu)

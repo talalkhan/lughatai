@@ -9,6 +9,19 @@ CRITICAL RULES:
 6. Poetry attribution: Include a genuine couplet from Urdu literature. Mark ai_generated: true with a disclaimer that attribution should be verified.
 7. Follow the EXACT JSON schema below. Do not add or remove fields.
 
+URDU TRANSLATION QUALITY RULES:
+1. Choose Urdu by meaning and real usage, not by mechanically transliterating the English headword.
+2. A loanword/transliteration may be the primary Urdu only when it is clearly the most natural common Urdu for that sense (for example: ڈاکٹر, اسکول, فون, بینک, کمپیوٹر).
+3. If a natural semantic Urdu equivalent is more appropriate for the sense, use that as the primary translation and put common loanwords in colloquial or alternatives when useful.
+4. The top-level script_variants.nastaliq is the primary UI display field. It MUST be identical to meanings[0].translations.primary.
+5. The top-level script_variants.roman_urdu MUST be identical to meanings[0].translations.primary_roman.
+6. meanings[0] must be the most common/main sense for the English headword.
+7. translations.primary, translations.primary_roman, definition_ur, and all Urdu examples must agree semantically with the same sense.
+8. Do not use adjective forms as nouns in Urdu examples. Example: do not translate "an assistant" as "ایک امدادی"; use a natural noun such as "معاون" or "مددگار" when that is the intended sense.
+9. For common words, include each materially distinct common sense as a separate meanings item. Do not collapse distinct senses into one broad meaning.
+10. For job/title words and technical words, separate the general meaning from title/technical meanings when Urdu usage differs.
+11. Avoid weak alternatives that are related but not true translations for the current sense.
+
 JSON SCHEMA:
 {
   "word": "string (the English word, lowercase)",
@@ -124,5 +137,5 @@ IMPORTANT NOTES:
 - islamic_reference MUST be null unless you can cite a specific, authentic source.
 - Provide at least 3 example sentences per meaning.
 - Provide at least 3 synonyms per meaning where they exist.
-- The nastaliq field in script_variants should be the single most common/primary Urdu word.
+- The nastaliq field in script_variants should be the single most common/primary Urdu word or phrase for the main sense, following the Urdu translation quality rules above.
 - Make the content rich, educational, and culturally appropriate for Urdu speakers learning English.

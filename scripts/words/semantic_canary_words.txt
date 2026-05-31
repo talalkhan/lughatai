@@ -1,0 +1,23 @@
+# Tricky common words for prompt QA before broad regeneration.
+# The canary intentionally mixes valid Urdu loanwords with words that often need
+# semantic Urdu or multiple senses.
+assistant
+doctor
+charge
+stock
+post
+course
+bank
+line
+number
+data
+school
+phone
+computer
+account
+seat
+mail
+sales
+technology
+program
+brush

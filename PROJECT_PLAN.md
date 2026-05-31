@@ -8,11 +8,11 @@
 ## Current Status
 
 ```
-Last updated  : 2026-05-30
+Last updated  : 2026-05-31
 Updated by    : Codex GPT-5
 Active phase  : Live (beta deployed)
 Current task  : Expand word database using trusted SCOWL/WordNet validation
-Next task     : Sample semantic quality and decide whether to regenerate quarantined approved words
+Next task     : Review semantic canary output and build confirmed regeneration queue
 ```
 
 ### Beta Deployment (2026-05-24)
@@ -59,6 +59,8 @@ Next task     : Sample semantic quality and decide whether to regenerate quarant
 - **2026-05-30 production quality audit:** Added `audit_azure_word_definitions.ps1` and ran a read-only Azure audit. Production now has 185,220 definitions: 152,848 from `gpt-4o-mini-batch`, 32,262 from `gpt-4o-mini`, 100 from `claude-sonnet-4-6`, and 10 from the old invalid `claude-haiku-4-5-20251001` model. Stage breakdown: 72,081 enriched, 69,939 core, 43,200 missing stage. JSON health flags: 189 top-level word mismatches, 753 empty/non-array meanings, and 614 missing Nastaliq values. Mismatches are legacy live/broad-generation rows, not the repaired trusted batch path. Stop generation until these quality-debt rows are repaired, quarantined, or deleted.
 - **2026-05-30 missing-stage metadata repair:** Added `stamp_azure_missing_stage_enriched.ps1`. Dry-run confirmed 43,200 missing-stage rows had enrichment fields populated; applied the metadata-only repair to set `data._meta.stage='enriched'`. Verification audit now shows 0 missing-stage rows, 115,281 enriched rows, and 69,939 core rows. Remaining quality flags are content issues: 189 top-level word mismatches, 753 empty/non-array meanings, and 614 missing Nastaliq values.
 - **2026-05-30 legacy content cleanup:** Added quarantine/repair scripts for production quality flags. Quarantined and deleted 189 top-level word mismatches into `word_mismatch_quarantine`; quarantined and deleted 753 rows with empty/malformed `meanings` into `empty_meanings_quarantine`; repaired 49 missing Nastaliq values from existing primary Urdu translations; quarantined and deleted the remaining 207 missing-Nastaliq rows into `missing_nastaliq_quarantine`. Final Azure audit: 184,072 definitions, 0 missing stage, 0 top-level word mismatches, 0 empty/non-array meanings, and 0 missing Nastaliq values.
+- **2026-05-31 semantic-risk audit:** Added `audit_azure_semantic_risk.ps1` to estimate assistant-like quality risks before changing prompts. Current heuristic counts: 42,904 rows where the first meaning's `primary_roman` normalizes to the English headword, 6,907 of those also have alternative Urdu translations, and 5,134 are common/learning words with alternatives. This is an upper-bound review queue because some English loanwords are valid Urdu usage; prompt tuning and sample review are required before regeneration.
+- **2026-05-31 prompt QA hardening:** Added Urdu translation quality rules to the enriched and core prompts: semantic Urdu should win unless a loanword is genuinely the normal Urdu usage, common distinct senses should not be merged, and Urdu examples must agree with the selected sense. Added `run_openai_prompt_canary.ps1` plus `semantic_canary_words.txt` for read-only prompt QA. The first canary showed prompt-only was insufficient because OpenAI still returned mismatched top-level `script_variants.nastaliq` for words like `assistant`, so live generation and OpenAI batch collection now normalize `script_variants.nastaliq`/`roman_urdu` from `meanings[0].translations.primary` before storage.
 
 ### At-a-Glance Progress
 
