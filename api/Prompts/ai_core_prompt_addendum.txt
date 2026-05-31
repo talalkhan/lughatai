@@ -8,6 +8,7 @@ CORE MODE ADDENDUM FOR PRIORITY-3 WORDS:
 - Do not reduce Urdu translation quality in core mode. The primary Urdu must be the most natural semantic translation for the sense, unless a loanword is genuinely the normal Urdu usage.
 - Include separate meanings for common distinct senses even in core mode. Keep entries concise by omitting enrichment extras, not by merging different meanings.
 - Urdu examples must use the selected Urdu translation naturally and grammatically.
+- For common ambiguous words, core mode should still preserve the main distinct senses. A compact multi-sense entry is better than a one-sense entry that omits familiar meanings.
 - Synonyms, antonyms, collocations, and confusables should be included only when they materially improve understanding. Otherwise use empty arrays.
 - In core mode, set these fields exactly to the lean values below:
   - etymology: null

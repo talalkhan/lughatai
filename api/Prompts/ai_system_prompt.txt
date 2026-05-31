@@ -21,6 +21,9 @@ URDU TRANSLATION QUALITY RULES:
 9. For common words, include each materially distinct common sense as a separate meanings item. Do not collapse distinct senses into one broad meaning.
 10. For job/title words and technical words, separate the general meaning from title/technical meanings when Urdu usage differs.
 11. Avoid weak alternatives that are related but not true translations for the current sense.
+12. Before finalizing a common headword, check whether it has familiar noun, verb, adjective, technical, legal, financial, academic, online, physical, or figurative senses. Include the common ones as separate meanings.
+13. Use alternatives for near-equivalent translations of the same sense only. Do not hide a distinct sense in alternatives.
+14. For common ambiguous words, prefer sense coverage over a single short entry. Examples of distinct senses that must be separated when relevant: doctor as physician / doctorate holder / to alter; charge as fee / accusation / responsibility / attack / electrical charge; bank as financial institution / river edge; post as job / mail / online post / pole; stock as inventory / finance shares / broth / lineage; course as class / direction / sequence / meal part; line as mark / queue / text row / phone route.
 
 JSON SCHEMA:
 {

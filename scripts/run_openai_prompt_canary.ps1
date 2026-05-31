@@ -8,7 +8,7 @@
 
 param(
     [string]$WordsFile = (Join-Path $PSScriptRoot "words\semantic_canary_words.txt"),
-    [string]$Model = "gpt-4o-mini",
+    [string]$Model = "gpt-4.1-mini",
     [string]$SettingsFile = (Join-Path $PSScriptRoot "..\api\appsettings.Development.json"),
     [string]$PromptFile = (Join-Path $PSScriptRoot "..\api\Prompts\ai_system_prompt.txt"),
     [string]$CorePromptAddendumFile = (Join-Path $PSScriptRoot "..\api\Prompts\ai_core_prompt_addendum.txt"),

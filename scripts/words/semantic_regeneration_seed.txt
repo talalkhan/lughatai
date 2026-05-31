@@ -1,0 +1,14 @@
+# Confirmed canary words to regenerate after semantic QA.
+# Source: scripts/words/semantic_canary_review.csv
+assistant
+doctor
+charge
+stock
+post
+course
+bank
+line
+seat
+mail
+program
+brush

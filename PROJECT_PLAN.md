@@ -12,7 +12,7 @@ Last updated  : 2026-05-31
 Updated by    : Codex GPT-5
 Active phase  : Live (beta deployed)
 Current task  : Expand word database using trusted SCOWL/WordNet validation
-Next task     : Review semantic canary output and build confirmed regeneration queue
+Next task     : Export Azure semantic review sample and regenerate confirmed failures with stronger model
 ```
 
 ### Beta Deployment (2026-05-24)
@@ -61,6 +61,7 @@ Next task     : Review semantic canary output and build confirmed regeneration q
 - **2026-05-30 legacy content cleanup:** Added quarantine/repair scripts for production quality flags. Quarantined and deleted 189 top-level word mismatches into `word_mismatch_quarantine`; quarantined and deleted 753 rows with empty/malformed `meanings` into `empty_meanings_quarantine`; repaired 49 missing Nastaliq values from existing primary Urdu translations; quarantined and deleted the remaining 207 missing-Nastaliq rows into `missing_nastaliq_quarantine`. Final Azure audit: 184,072 definitions, 0 missing stage, 0 top-level word mismatches, 0 empty/non-array meanings, and 0 missing Nastaliq values.
 - **2026-05-31 semantic-risk audit:** Added `audit_azure_semantic_risk.ps1` to estimate assistant-like quality risks before changing prompts. Current heuristic counts: 42,904 rows where the first meaning's `primary_roman` normalizes to the English headword, 6,907 of those also have alternative Urdu translations, and 5,134 are common/learning words with alternatives. This is an upper-bound review queue because some English loanwords are valid Urdu usage; prompt tuning and sample review are required before regeneration.
 - **2026-05-31 prompt QA hardening:** Added Urdu translation quality rules to the enriched and core prompts: semantic Urdu should win unless a loanword is genuinely the normal Urdu usage, common distinct senses should not be merged, and Urdu examples must agree with the selected sense. Added `run_openai_prompt_canary.ps1` plus `semantic_canary_words.txt` for read-only prompt QA. The first canary showed prompt-only was insufficient because OpenAI still returned mismatched top-level `script_variants.nastaliq` for words like `assistant`, so live generation and OpenAI batch collection now normalize `script_variants.nastaliq`/`roman_urdu` from `meanings[0].translations.primary` before storage.
+- **2026-05-31 semantic canary review:** Reviewed the 20-word semantic canary and created `semantic_canary_review.csv`: 8 keep, 7 partial/regenerate, 5 fail/regenerate. Added `semantic_regeneration_seed.txt` with 12 confirmed canary regeneration candidates. A retest with `gpt-4o-mini` remained unreliable for high-quality semantic repair, while `gpt-4.1-mini` produced materially better canary coverage for assistant/doctor/charge/stock/post. Use the stronger model for confirmed semantic repair rather than broad low-cost regeneration.
 
 ### At-a-Glance Progress
 
