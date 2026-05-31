@@ -12,7 +12,7 @@ Last updated  : 2026-05-30
 Updated by    : Codex GPT-5
 Active phase  : Live (beta deployed)
 Current task  : Expand word database using trusted SCOWL/WordNet validation
-Next task     : Clean remaining legacy quality flags: word mismatches, empty meanings, missing Nastaliq
+Next task     : Sample semantic quality and decide whether to regenerate quarantined approved words
 ```
 
 ### Beta Deployment (2026-05-24)
@@ -58,6 +58,7 @@ Next task     : Clean remaining legacy quality flags: word mismatches, empty mea
 - **2026-05-30 final trusted repair:** Added `repair_batch_headword_mismatches.ps1` and used it to repair the 12 valid JSON rows from batch 006 whose top-level headword drifted. The script anchors each JSON object to the queued word, applies core shape, inserts locally, and marks the queue row done. Reloaded batch 006 to Azure and refreshed candidates: 0 full and 0 core trusted candidates remain missing.
 - **2026-05-30 production quality audit:** Added `audit_azure_word_definitions.ps1` and ran a read-only Azure audit. Production now has 185,220 definitions: 152,848 from `gpt-4o-mini-batch`, 32,262 from `gpt-4o-mini`, 100 from `claude-sonnet-4-6`, and 10 from the old invalid `claude-haiku-4-5-20251001` model. Stage breakdown: 72,081 enriched, 69,939 core, 43,200 missing stage. JSON health flags: 189 top-level word mismatches, 753 empty/non-array meanings, and 614 missing Nastaliq values. Mismatches are legacy live/broad-generation rows, not the repaired trusted batch path. Stop generation until these quality-debt rows are repaired, quarantined, or deleted.
 - **2026-05-30 missing-stage metadata repair:** Added `stamp_azure_missing_stage_enriched.ps1`. Dry-run confirmed 43,200 missing-stage rows had enrichment fields populated; applied the metadata-only repair to set `data._meta.stage='enriched'`. Verification audit now shows 0 missing-stage rows, 115,281 enriched rows, and 69,939 core rows. Remaining quality flags are content issues: 189 top-level word mismatches, 753 empty/non-array meanings, and 614 missing Nastaliq values.
+- **2026-05-30 legacy content cleanup:** Added quarantine/repair scripts for production quality flags. Quarantined and deleted 189 top-level word mismatches into `word_mismatch_quarantine`; quarantined and deleted 753 rows with empty/malformed `meanings` into `empty_meanings_quarantine`; repaired 49 missing Nastaliq values from existing primary Urdu translations; quarantined and deleted the remaining 207 missing-Nastaliq rows into `missing_nastaliq_quarantine`. Final Azure audit: 184,072 definitions, 0 missing stage, 0 top-level word mismatches, 0 empty/non-array meanings, and 0 missing Nastaliq values.
 
 ### At-a-Glance Progress
 
