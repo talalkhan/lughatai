@@ -64,6 +64,9 @@ param(
     # Priority tier that should switch to core-mode generation
     [int]$CoreFromPriority = 3,
 
+    # Reasoning effort for GPT-5-family models. Use none for dictionary JSON generation.
+    [string]$ReasoningEffort = "none",
+
     # Submit one batch then stop — for testing the full pipeline
     [switch]$TestOne
 )
@@ -168,7 +171,12 @@ $corePromptEscaped = $corePromptJson.Substring(1, $corePromptJson.Length - 2)
 # Pre-build the request template prefix/suffix to avoid repeating the prompt each time
 $reqPrefix = "{`"custom_id`":`""
 # We'll build each line as: {prefix}{customId}`",{middle}{word-escaped}{suffix}
-$reqMiddleTemplate  = "`",`"method`":`"POST`",`"url`":`"/v1/chat/completions`",`"body`":{`"model`":`"$Model`",`"max_tokens`":$MaxTokens,`"response_format`":{`"type`":`"json_object`"},`"messages`":[{`"role`":`"system`",`"content`":`"{0}`"},{`"role`":`"user`",`"content`":`""
+$tokenAndReasoning = if ($Model -like "gpt-5*") {
+    "`"max_completion_tokens`":$MaxTokens,`"reasoning_effort`":`"$ReasoningEffort`","
+} else {
+    "`"max_tokens`":$MaxTokens,"
+}
+$reqMiddleTemplate  = "`",`"method`":`"POST`",`"url`":`"/v1/chat/completions`",`"body`":{`"model`":`"$Model`",$tokenAndReasoning`"response_format`":{`"type`":`"json_object`"},`"messages`":[{`"role`":`"system`",`"content`":`"{0}`"},{`"role`":`"user`",`"content`":`""
 $reqSuffix  = "`"}]}}"
 $reqMiddleByStage = @{
     enriched = $reqMiddleTemplate.Replace("{0}", $fullPromptEscaped)

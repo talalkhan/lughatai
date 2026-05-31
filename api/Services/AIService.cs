@@ -183,17 +183,25 @@ public class AIService : IWordAIService
             ?? throw new AIServiceException("OpenAI API key not configured");
         var userPrompt = BuildWordRequest(word);
 
-        var payload = new
+        var payload = new Dictionary<string, object?>
         {
-            model,
-            max_tokens = 8192,   // match Claude budget; GPT-4o-mini supports up to 16384
-            response_format = new { type = "json_object" },
-            messages = new[]
+            ["model"] = model,
+            ["response_format"] = new { type = "json_object" },
+            ["messages"] = new[]
             {
                 new { role = "system", content = prompt },
                 new { role = "user", content = userPrompt }
             }
         };
+        if (model.StartsWith("gpt-5", StringComparison.OrdinalIgnoreCase))
+        {
+            payload["max_completion_tokens"] = 16000;
+            payload["reasoning_effort"] = "none";
+        }
+        else
+        {
+            payload["max_tokens"] = 8192;   // match Claude budget; GPT-4o-mini supports up to 16384
+        }
 
         var client = _httpClientFactory.CreateClient("openai");
         client.DefaultRequestHeaders.Clear();

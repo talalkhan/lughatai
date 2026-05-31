@@ -14,7 +14,9 @@ param(
     [string]$CorePromptAddendumFile = (Join-Path $PSScriptRoot "..\api\Prompts\ai_core_prompt_addendum.txt"),
     [string]$OutDir = (Join-Path $PSScriptRoot "words\processed\semantic_canary"),
     [switch]$Core,
-    [int]$Limit = 0
+    [int]$Limit = 0,
+    [int]$MaxCompletionTokens = 16000,
+    [string]$ReasoningEffort = "none"
 )
 
 $ErrorActionPreference = "Stop"
@@ -80,13 +82,22 @@ foreach ($word in $words) {
 
     $payload = @{
         model = $Model
-        max_tokens = 8192
         response_format = @{ type = "json_object" }
         messages = @(
             @{ role = "system"; content = $systemPrompt },
             @{ role = "user"; content = (Get-WordRequest $word) }
         )
-    } | ConvertTo-Json -Depth 20
+    }
+    if ($Model -like "gpt-5*") {
+        $payload["max_completion_tokens"] = $MaxCompletionTokens
+        if (-not [string]::IsNullOrWhiteSpace($ReasoningEffort)) {
+            $payload["reasoning_effort"] = $ReasoningEffort
+        }
+    } else {
+        $payload["max_tokens"] = $MaxCompletionTokens
+    }
+
+    $payload = $payload | ConvertTo-Json -Depth 20
 
     $response = Invoke-RestMethod `
         -Method Post `
@@ -95,7 +106,14 @@ foreach ($word in $words) {
         -Body $payload
 
     $content = $response.choices[0].message.content
+    if ([string]::IsNullOrWhiteSpace($content)) {
+        $finishReason = $response.choices[0].finish_reason
+        throw "Model returned empty content for '$word'. finish_reason=$finishReason"
+    }
     $parsed = $content | ConvertFrom-Json
+    if ($null -eq $parsed) {
+        throw "Model returned JSON null for '$word'."
+    }
     $safeWord = $word -replace '[^a-z0-9_-]', '_'
     $jsonPath = Join-Path $OutDir "$safeWord.json"
     [System.IO.File]::WriteAllText($jsonPath, ($parsed | ConvertTo-Json -Depth 100), [System.Text.Encoding]::UTF8)
