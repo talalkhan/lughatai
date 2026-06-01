@@ -47,6 +47,8 @@ function Convert-ToPsqlConnStr([string]$connStr) {
 
 New-Item -ItemType Directory -Path (Split-Path $OutFile -Parent) -Force | Out-Null
 
+$limitClause = if ($Limit -gt 0) { "LIMIT $Limit" } else { "" }
+
 $sql = @"
 COPY (
 WITH base AS (
@@ -109,8 +111,9 @@ FROM flags
 WHERE meaning_primary_roman_equals_word
   AND has_alternatives
   AND common_or_learning_word
+  AND model <> 'gpt-5.5'
 ORDER BY COALESCE(frequency_rank, 999999), word
-LIMIT $Limit
+$limitClause
 ) TO STDOUT WITH CSV HEADER;
 "@
 
