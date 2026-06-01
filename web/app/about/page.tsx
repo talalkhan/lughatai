@@ -5,7 +5,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/site";
 export const metadata: Metadata = {
   title: `About | ${SITE_NAME}`,
   description:
-    "Learn about UrduMeaning — an AI-powered English to Urdu dictionary built to make the Urdu language accessible to everyone.",
+    "Learn about UrduMeaning — an AI-assisted English to Urdu dictionary built to make the Urdu language accessible to everyone.",
   alternates: { canonical: `${SITE_URL}/about` },
 };
 
@@ -47,20 +47,11 @@ export default function AboutPage() {
             How it works
           </h2>
           <p>
-            Each word is processed once by{" "}
-            <a
-              href="https://www.anthropic.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-indigo-600 dark:text-indigo-400 hover:underline"
-            >
-              Claude
-            </a>{" "}
-            (Anthropic&apos;s AI) and stored permanently in our database. The
-            first time you look up a word that isn&apos;t in the dictionary
-            yet, Claude generates a complete entry — typically within 15–30
-            seconds. Every subsequent visit loads instantly from the cache.
-            This means the dictionary grows with every search.
+            Each word is processed once by our AI system and stored permanently
+            in our database. The first time you look up a word that isn&apos;t
+            in the dictionary yet, AI can generate a complete entry. Every
+            subsequent visit loads instantly from the cache. This means the
+            dictionary grows with every search.
           </p>
         </section>
 
@@ -82,12 +73,11 @@ export default function AboutPage() {
             A note on accuracy
           </h2>
           <p>
-            Word definitions are AI-generated and reviewed only at the
-            structural level — not word by word. While Claude is highly
-            capable and the results are generally excellent, occasional
-            inaccuracies may occur. If you spot an error, use the flag button
-            on any word page and we&apos;ll review it. We&apos;re continuously
-            improving quality as the dictionary grows.
+            Word definitions are AI-generated. Entries are automatically
+            checked for structure and formatting, but individual translations
+            may still contain mistakes. If you spot an error, use the flag
+            button on any word page and we&apos;ll review it. Flagged entries
+            help us prioritize corrections as the dictionary grows.
           </p>
         </section>
 

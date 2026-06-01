@@ -40,7 +40,7 @@ export default function Loading() {
           </p>
           {isGenerating && (
             <p className="text-xs text-indigo-600 dark:text-indigo-400 mt-0.5">
-              This is a new word — Claude is building a full Urdu definition
+              This may be a new word, so AI is preparing a full Urdu definition
             </p>
           )}
         </div>

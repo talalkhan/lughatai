@@ -26,7 +26,7 @@ export default function WordError({
 
         <p className="text-gray-600 dark:text-gray-400">
           {isTimeout
-            ? "Claude is building a full Urdu definition for this word. It usually takes 15–30 seconds on the first visit. Try again in a moment."
+            ? "AI is building a full Urdu definition for this word. It may take a moment on the first visit. Try again shortly."
             : "An unexpected error occurred loading this word. Please try again."}
         </p>
 

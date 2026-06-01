@@ -98,7 +98,7 @@ export default function PrivacyPage() {
           <ul className="list-disc list-inside space-y-2 ml-1">
             <li>To deliver and improve the dictionary service</li>
             <li>To monitor uptime, diagnose errors, and prevent abuse</li>
-            <li>To generate AI-powered definitions via Anthropic&apos;s Claude API</li>
+            <li>To generate AI-assisted definitions via third-party AI model providers</li>
           </ul>
           <p className="mt-4">
             We do not sell, rent, or share your personal information with third
@@ -135,8 +135,8 @@ export default function PrivacyPage() {
                   <td className="py-2">DNS, CDN, DDoS protection</td>
                 </tr>
                 <tr>
-                  <td className="py-2 pr-4">Anthropic</td>
-                  <td className="py-2">AI-generated word definitions</td>
+                  <td className="py-2 pr-4">AI model providers</td>
+                  <td className="py-2">Generating and improving dictionary entries</td>
                 </tr>
                 <tr>
                   <td className="py-2 pr-4">Azure Cognitive Speech</td>
