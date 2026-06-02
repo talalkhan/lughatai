@@ -8,11 +8,11 @@
 ## Current Status
 
 ```
-Last updated  : 2026-05-31
+Last updated  : 2026-06-02
 Updated by    : Codex GPT-5
 Active phase  : Live (beta deployed)
-Current task  : Expand word database using trusted SCOWL/WordNet validation
-Next task     : Export Azure semantic review sample and regenerate confirmed failures with stronger model
+Current task  : Semantic-quality hardening and confirmed repair only
+Next task     : Sample-review deferred loanword queue before any paid AI regeneration
 ```
 
 ### Beta Deployment (2026-05-24)
@@ -71,6 +71,7 @@ Next task     : Export Azure semantic review sample and regenerate confirmed fai
 - **2026-06-02 semantic repair controlled run:** Added `review_semantic_repairs.ps1` as a pre-load QA gate that writes accepted/rejected/review CSVs before Azure load. A dry review of the mixed `gpt-5.4-mini` batch 004 accepted 84 rows and held 16 warning rows for review, confirming that future loads should pass through this gate instead of structural QA only. Exported the next 500 semantic-risk candidates to `semantic_review_queue_gpt55_005_20260602.csv` and submitted `gpt-5.5` batch `batch_6a1f2ffa156881909399880f7ab624c3` using tracking file `semantic_repairs_gpt55_005_20260602.json`; current status is `validating`.
 - **2026-06-02 GPT-5.5 batch 005 load and Gemini patch canary:** Collected `batch_6a1f2ffa156881909399880f7ab624c3`: 500 accepted, 0 collection errors. The pre-load QA gate accepted 395 and held 105 warning rows; applied only the 395 accepted rows to Azure with backup run id `5782ece7-fef9-459f-a6d0-714beb0e60c3`. Azure structural audit stayed clean and common assistant-like semantic risk dropped from 4,829 to 4,434. Added Gemini semantic patch generator/reviewer/loader scripts, but the 25-word `gemini-2.5-flash-lite` canary was not safe for automated loading: after stricter QA, only 1/25 patches auto-passed and issues included singular repairs for plural headwords and weak learner primaries. `gemini-2.5-flash` returned a Google 503 high-demand error, so no larger Gemini run was submitted.
 - **2026-06-02 no-AI semantic triage:** Added `classify_semantic_review_queue.ps1` and exported the current non-GPT-5.5 semantic-risk queue to `semantic_review_queue_remaining_20260602.csv`. The classifier split 4,338 rows into 65 deterministic keep, 157 repair, and 4,116 review/defer rows. The key operating decision is to stop treating the whole heuristic queue as bad data: target the 157 obvious repair rows first, keep known valid Urdu loanwords, and defer the large ambiguous loanword set unless a user-visible issue is found.
+- **2026-06-02 deterministic semantic repair closeout:** Loaded 12 already-paid high-quality GPT-5.5 repairs that had been held only by loanword warnings (`blazer`, `booth`, `campus`, `heroine`, `nozzle`, `policy`, `processor`, `tanker`, `handbrake`, `loudspeaker`, `spreadsheet`, `canteen`) with backup run id `2dce602c-772a-483c-8350-45094262d22f`. Added `repair_azure_semantic_rule_overrides.ps1` for small high-confidence non-AI Azure fixes and applied 17 deterministic display/semantic overrides with backup run ids `3a1f23f7-5246-49a8-a958-a7dc585963f0` and `cbc4b064-fec8-4f91-a78a-072e810c3123`. Final Azure structural audit stayed clean: 184,072 definitions, 0 missing stage, 0 word mismatches, 0 empty meanings, and 0 missing Nastaliq. Re-exported/reclassified the remaining semantic-risk queue: 4,312 rows split into 65 keep and 4,247 review/defer, with 0 deterministic repair rows left. The remaining semantic-risk count is a heuristic loanword-review queue, not confirmed bad data and not safe for blind paid regeneration.
 
 ### At-a-Glance Progress
 

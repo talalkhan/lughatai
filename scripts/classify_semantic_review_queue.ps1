@@ -88,16 +88,13 @@ $knownBadPrimaryByWord = @{
 
 $badAlternativeFragments = @(
     "نان بائیک",
-    "مکسر",
     "درستہ",
     "جاپت",
-    "شہزادہ",
     "نحویہ",
-    "معالجہ",
     "مقید",
     "سوزوکی",
-    "بہن",
-    "ملتزم"
+    "ملتزم",
+    "بہنچود"
 )
 
 $goodSemanticAlternativeFragments = @(
@@ -167,7 +164,7 @@ $classified = foreach ($row in $rows) {
         $verdict = "keep"
         $reason = "known_common_urdu_loanword"
         $suggestedAction = "mark_reviewed_keep"
-    } elseif ($primaryNorm -eq $wordNorm -and $hasGoodSemanticAlt -and $meaningCount -le 2 -and $freq -le 5000) {
+    } elseif ($primaryNorm -eq $wordNorm -and $hasGoodSemanticAlt -and $meaningCount -le 2 -and $freq -le 5000 -and ($word -in @("handbrake", "spreadsheet", "topology", "ultra", "beaker", "gorges", "antihero"))) {
         $verdict = "repair"
         $reason = "loanword_primary_but_good_semantic_alternative_exists"
         $suggestedAction = "promote_semantic_alternative_or_patch"
