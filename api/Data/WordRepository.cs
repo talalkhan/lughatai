@@ -21,7 +21,7 @@ public interface IWordRepository
     Task UpdateAudioUrlAsync(string wordLower, string lang, string url);
     Task<IEnumerable<SearchResult>> SearchByRomanUrduAsync(string query, int limit);
     Task RecordHistoryAsync(int userId, string word);
-    Task AddCorrectionAsync(string word, int? userId, string reason, string? notes);
+    Task<bool> AddCorrectionAsync(string word, int? userId, string reason, string? notes);
     Task<IEnumerable<dynamic>> GetOpenCorrectionsAsync();
     Task<IEnumerable<dynamic>> GetUnverifiedPoetryAsync();
     Task MarkPoetryVerifiedAsync(string wordLower);
@@ -251,7 +251,7 @@ public class WordRepository : IWordRepository
             """, new { userId });
     }
 
-    public async Task AddCorrectionAsync(string word, int? userId, string reason, string? notes)
+    public async Task<bool> AddCorrectionAsync(string word, int? userId, string reason, string? notes)
     {
         using var conn = Connection();
         var normalizedWord = word.ToLowerInvariant();
@@ -263,11 +263,12 @@ public class WordRepository : IWordRepository
             : "SELECT 1 FROM corrections WHERE word = @word AND reason = @reason AND user_id IS NULL AND status = 'open' AND created_at > NOW() - INTERVAL '24 hours'";
 
         var exists = await conn.ExecuteScalarAsync<int?>(duplicateCheck, new { word = normalizedWord, reason, userId });
-        if (exists.HasValue) return;
+        if (exists.HasValue) return false;
 
         await conn.ExecuteAsync(
             "INSERT INTO corrections (word, user_id, reason, notes) VALUES (@word, @userId, @reason, @notes)",
             new { word = normalizedWord, userId, reason, notes });
+        return true;
     }
 
     public async Task<IEnumerable<dynamic>> GetOpenCorrectionsAsync()

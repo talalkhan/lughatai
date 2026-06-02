@@ -86,6 +86,7 @@ try
     builder.Services.AddScoped<IWordService, WordService>();
     builder.Services.AddScoped<IAudioService, AudioService>();
     builder.Services.AddScoped<IAuthService, AuthService>();
+    builder.Services.AddSingleton<IReportNotificationService, ReportNotificationService>();
 
     // Background job
     builder.Services.AddSingleton<WordEnrichmentProcessor>();

@@ -18,13 +18,20 @@ public class WordController : ControllerBase
     private readonly IAudioService _audioService;
     private readonly IWordRepository _repo;
     private readonly IConfiguration _config;
+    private readonly IReportNotificationService _reportNotifier;
 
-    public WordController(IWordService wordService, IAudioService audioService, IWordRepository repo, IConfiguration config)
+    public WordController(
+        IWordService wordService,
+        IAudioService audioService,
+        IWordRepository repo,
+        IConfiguration config,
+        IReportNotificationService reportNotifier)
     {
         _wordService = wordService;
         _audioService = audioService;
         _repo = repo;
         _config = config;
+        _reportNotifier = reportNotifier;
     }
 
     [HttpGet("word/{word}")]
@@ -142,7 +149,13 @@ public class WordController : ControllerBase
         if (idClaim != null && int.TryParse(idClaim, out var parsedUserId))
             userId = parsedUserId;
 
-        await _repo.AddCorrectionAsync(word, userId, req.Reason, req.Notes);
+        var inserted = await _repo.AddCorrectionAsync(word, userId, req.Reason, req.Notes);
+
+        // Fire-and-forget email — only on the first report within the 24h dedupe window,
+        // so duplicates don't spam the admin inbox. NotifyAsync never throws.
+        if (inserted)
+            _ = _reportNotifier.NotifyAsync(word, req.Reason, req.Notes, userId);
+
         return Ok(new { flagged = true });
     }
 }

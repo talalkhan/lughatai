@@ -123,6 +123,18 @@ Create `api/appsettings.Development.json` (never commit secrets):
   "Enrichment": {
     "Enabled": true,
     "MaxPerHour": 30
+  },
+  "Notifications": {
+    "Email": {
+      "Enabled": true,                         // false in production appsettings.json; flip on per-env
+      "SmtpHost": "smtp.gmail.com",
+      "SmtpPort": 587,
+      "SmtpUsername": "urdumeaningreport@gmail.com",
+      "SmtpPassword": "GMAIL_APP_PASSWORD",    // 16-char App Password, NOT the account password
+      "From": "urdumeaningreport@gmail.com",
+      "To": "admin@thetafoundry.com",
+      "SiteBaseUrl": "http://localhost:3000"   // production overrides to https://urdumeaning.com
+    }
   }
 }
 ```
@@ -459,6 +471,72 @@ Do not switch it back to `LiveModel` (Sonnet).
 Both `generateMetadata` and the page component call `getWordCached()`, not `getWord()`
 directly. This ensures **one** API call per page render instead of two.
 Do not remove the `cache()` wrapper or call `getWord()` directly in this file.
+
+---
+
+## Report Notifications (user "Report error" → admin email)
+
+When a user clicks the flag button on a word page, the flow is:
+
+1. `web/components/FlagButton.tsx` POSTs `{ reason, notes }` to `/api/word/{word}/flag`.
+2. `WordController.FlagWord` is rate-limited (`"flag"` policy, 5/IP/hour) and validates input.
+3. `WordRepository.AddCorrectionAsync` inserts into the `corrections` table **only if**
+   the same `(word, reason, user)` is not already `open` within the last 24 hours.
+   It returns `bool` — `true` = real new row inserted, `false` = duplicate skipped.
+4. If `true`, the controller fires `IReportNotificationService.NotifyAsync(...)`
+   **fire-and-forget**. The notifier sends an email via Gmail SMTP using
+   `System.Net.Mail.SmtpClient` (no NuGet package — built into .NET).
+
+### Why the design is the way it is — do not change without reading this
+
+- **`AddCorrectionAsync` returns `bool` on purpose.** The bool tells the controller
+  whether a real new row was inserted (vs. a 24h duplicate). The email only fires
+  on `true`, so a single angry user spam-clicking the flag button cannot flood the
+  admin inbox. Don't revert it to `Task` (void) — you'll break dedupe.
+- **The email send is fire-and-forget (`_ = NotifyAsync(...)`).** Awaiting it
+  would add Gmail latency to the user-facing flag endpoint and let SMTP failures
+  surface as 500s. `NotifyAsync` is documented to never throw — keep it that way.
+- **`Notifications:Email:Enabled` is `false` in `appsettings.json`.** Production
+  flips it on via Azure App Service env vars. Keep the default off so a fresh
+  environment without credentials doesn't log warnings on every report.
+- **Gmail App Password, not the account password.** Generate at
+  `https://myaccount.google.com/apppasswords` (requires 2FA). The 16-char password
+  is shown with spaces — the service strips spaces before authenticating, so either
+  format works in config.
+
+### Production Azure env vars
+
+Set on `lughatai-beta-api` App Service config:
+
+```
+Notifications__Email__Enabled       = true
+Notifications__Email__SmtpHost      = smtp.gmail.com
+Notifications__Email__SmtpPort      = 587
+Notifications__Email__SmtpUsername  = urdumeaningreport@gmail.com
+Notifications__Email__SmtpPassword  = <16-char Gmail App Password>
+Notifications__Email__From          = urdumeaningreport@gmail.com
+Notifications__Email__To            = admin@thetafoundry.com
+```
+
+`SiteBaseUrl` defaults to `https://urdumeaning.com` in `appsettings.json`.
+
+### Rotating the password
+
+To rotate the Gmail App Password (do this if it leaks or after every chat where it
+was pasted in plain text):
+
+1. https://myaccount.google.com/apppasswords → delete the `UrduMeaning API` entry
+2. Create a new one named the same
+3. Update `Notifications__Email__SmtpPassword` in Azure App Service config
+4. Update local `api/appsettings.Development.json` (gitignored — safe)
+
+### Limits
+
+Gmail free-tier outbound: ~500 emails/day from a single account. At report volume
+this is effectively infinite. If we ever exceed it, the SMTP send will throw,
+`NotifyAsync` will log a warning, and the underlying `corrections` row is still
+saved — admin sees reports via `GET /api/admin/corrections` even when email is
+down.
 
 ---
 
