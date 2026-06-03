@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const BOT_USER_AGENT_PATTERN =
-  /bot|crawler|spider|crawling|facebookexternalhit|slurp|bingpreview|duckduckgo|baiduspider|yandex|semrush|ahrefs|mj12bot|dotbot|petalbot|bytespider|gptbot|ccbot|claudebot|perplexity|amazonbot/i;
+const ALLOWED_SEARCH_CRAWLER_PATTERN =
+  /googlebot|bingbot|duckduckbot|slurp|yandexbot|baiduspider|applebot/i;
+
+const NOISY_CRAWLER_PATTERN =
+  /semrush|ahrefs|mj12bot|dotbot|bytespider|gptbot|ccbot|claudebot|perplexity|amazonbot|petalbot/i;
+
+const WORD_PATH_PATTERN = /^\/word\/[a-zA-Z]+\/?$/;
 
 function blockedCrawlerResponse() {
-  return new NextResponse("Word pages are temporarily unavailable to crawlers.", {
+  return new NextResponse("Word pages are unavailable to this crawler.", {
     status: 429,
     headers: {
       "Cache-Control": "public, max-age=300",
@@ -19,9 +24,23 @@ export function middleware(request: NextRequest) {
   const accept = request.headers.get("accept") ?? "";
   const secFetchDest = request.headers.get("sec-fetch-dest") ?? "";
   const secFetchMode = request.headers.get("sec-fetch-mode") ?? "";
+  const pathname = request.nextUrl.pathname;
 
-  if (BOT_USER_AGENT_PATTERN.test(userAgent)) {
+  if (!WORD_PATH_PATTERN.test(pathname)) {
+    return new NextResponse("Word not found", {
+      status: 404,
+      headers: {
+        "X-Robots-Tag": "noindex, nofollow",
+      },
+    });
+  }
+
+  if (NOISY_CRAWLER_PATTERN.test(userAgent)) {
     return blockedCrawlerResponse();
+  }
+
+  if (ALLOWED_SEARCH_CRAWLER_PATTERN.test(userAgent)) {
+    return NextResponse.next();
   }
 
   const isBrowserDocumentNavigation =

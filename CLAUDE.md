@@ -117,7 +117,7 @@ Create `api/appsettings.Development.json` (never commit secrets):
     "AllowedOrigins": ["http://localhost:3000"]
   },
   "WordGeneration": {
-    "Enabled": true,
+    "Enabled": false,
     "RequireApprovedWord": true
   },
   "Enrichment": {
@@ -412,7 +412,7 @@ Two master on/off switches guard against bot-triggered AI spend:
 
 | Config key | Default (appsettings.json) | Production (Azure) | What it controls |
 |---|---|---|---|
-| `WordGeneration:Enabled` | `true` | `false` | Live AI generation in `WordService` for single words not in DB |
+| `WordGeneration:Enabled` | `false` | `false` | Live AI generation in `WordService` for single words not in DB |
 | `WordGeneration:RequireApprovedWord` | `true` | `true` | Blocks live AI generation unless the missing word already exists in `approved_words` |
 | `Enrichment:Enabled` | `false` | `false` | Background enrichment in `WordEnrichmentProcessor` |
 
@@ -432,11 +432,19 @@ load the generated 340k-word list into `approved_words`, and use
 `scripts/audit_unqueued_definitions.sql` plus `scripts/cleanup_unapproved_definitions.sql`
 to inspect/quarantine existing bad generated rows before cleanup.
 
-Temporary crawler control: valid single-word `/word/...` pages can still be crawled at high
-volume and force SSR to call `/api/word/{word}`. Until CDN caching/WAF rules are in place,
-the web app removes word URLs from `sitemap.xml`, disallows `/word/` in `robots.txt`, and
-uses `web/middleware.ts` to return a cheap `429` for recognized crawler user agents and
-non-browser document requests before the word page renders.
+SEO crawl control: valid single-word `/word/...` pages can still be crawled at high
+volume and force SSR to call `/api/word/{word}`. Because live generation is now guarded
+by `WordGeneration:Enabled=false` in production plus `RequireApprovedWord=true`, the web
+app may expose known word pages to search crawlers again, but only in a controlled way:
+`robots.txt` allows `/word/` for general crawlers, `sitemap.xml` lists only existing
+words returned by `/api/browse` and is capped by `SITEMAP_WORD_LIMIT` (default 1000), and
+`web/middleware.ts` still blocks high-noise crawlers such as Ahrefs/Semrush/GPTBot while
+allowing Googlebot/Bingbot/DuckDuckBot.
+
+After reopening SEO, monitor Application Insights Dependencies for `api.openai.com` and
+`api.anthropic.com`; these should remain at zero unless a deliberate generation/enrichment
+run is enabled. Also monitor `/api/word/*` request volume and 404s before raising
+`SITEMAP_WORD_LIMIT`.
 
 **`WordGeneration:Enabled=false`** is an emergency kill switch — set it in Azure App
 Service config (no deployment needed) to freeze new word generation if AI costs spike.

@@ -8,11 +8,11 @@
 ## Current Status
 
 ```
-Last updated  : 2026-06-02
+Last updated  : 2026-06-03
 Updated by    : Codex GPT-5
 Active phase  : Live (beta deployed)
-Current task  : Semantic-quality hardening and confirmed repair only
-Next task     : Sample-review deferred loanword queue before any paid AI regeneration
+Current task  : SEO crawl reopening with AI generation disabled
+Next task     : Monitor App Insights dependencies before expanding sitemap volume
 ```
 
 ### Beta Deployment (2026-05-24)
@@ -73,6 +73,7 @@ Next task     : Sample-review deferred loanword queue before any paid AI regener
 - **2026-06-02 no-AI semantic triage:** Added `classify_semantic_review_queue.ps1` and exported the current non-GPT-5.5 semantic-risk queue to `semantic_review_queue_remaining_20260602.csv`. The classifier split 4,338 rows into 65 deterministic keep, 157 repair, and 4,116 review/defer rows. The key operating decision is to stop treating the whole heuristic queue as bad data: target the 157 obvious repair rows first, keep known valid Urdu loanwords, and defer the large ambiguous loanword set unless a user-visible issue is found.
 - **2026-06-02 deterministic semantic repair closeout:** Loaded 12 already-paid high-quality GPT-5.5 repairs that had been held only by loanword warnings (`blazer`, `booth`, `campus`, `heroine`, `nozzle`, `policy`, `processor`, `tanker`, `handbrake`, `loudspeaker`, `spreadsheet`, `canteen`) with backup run id `2dce602c-772a-483c-8350-45094262d22f`. Added `repair_azure_semantic_rule_overrides.ps1` for small high-confidence non-AI Azure fixes and applied 17 deterministic display/semantic overrides with backup run ids `3a1f23f7-5246-49a8-a958-a7dc585963f0` and `cbc4b064-fec8-4f91-a78a-072e810c3123`. Final Azure structural audit stayed clean: 184,072 definitions, 0 missing stage, 0 word mismatches, 0 empty meanings, and 0 missing Nastaliq. Re-exported/reclassified the remaining semantic-risk queue: 4,312 rows split into 65 keep and 4,247 review/defer, with 0 deterministic repair rows left. The remaining semantic-risk count is a heuristic loanword-review queue, not confirmed bad data and not safe for blind paid regeneration.
 - **2026-06-02 report feedback hardening:** Existing word-report flow was upgraded instead of adding a duplicate feedback UI. Reports still insert into `corrections` and trigger `ReportNotificationService` email only on the first non-duplicate report, but new reports now store `definition_snapshot` JSONB, `definition_model`, and `definition_updated_at` so each complaint preserves the exact word definition the user saw. The report modal now offers more actionable issue types, and report emails include the Urdu display value, model, and definition timestamp. Azure migration `20260602000000_AddCorrectionDefinitionSnapshot` was applied and verified in EF migration history before deployment.
+- **2026-06-03 controlled SEO reopening:** Reopened `/word/` for compliant search crawlers while keeping AI generation disabled. `robots.txt` now allows `/word/` globally but disallows high-noise crawlers from word pages, `web/middleware.ts` allows Googlebot/Bingbot/DuckDuckBot/Yandex/Baidu/Applebot while continuing to 429 Ahrefs/Semrush/GPTBot/CCBot/ClaudeBot-style traffic and 404 invalid word paths, and `sitemap.xml` lists only existing words returned by `/api/browse`, capped by `SITEMAP_WORD_LIMIT` (default 1000). `api/appsettings.json` now defaults `WordGeneration:Enabled=false` so production-safe no-AI behavior is the checked-in default. Monitor App Insights dependency calls to `api.openai.com` and `api.anthropic.com`; they should stay at zero before increasing the sitemap cap.
 
 ### At-a-Glance Progress
 
@@ -1210,6 +1211,7 @@ Next task     : Sample-review deferred loanword queue before any paid AI regener
 
 | Date | Agent | Task | Notes |
 |------|-------|------|-------|
+| 2026-06-03 | Codex GPT-5 | Controlled SEO reopening | Reopened word-page SEO for compliant search crawlers with a capped existing-word sitemap, noisy crawler throttling, invalid word-path 404s, and checked-in `WordGeneration:Enabled=false` default. |
 | 2026-05-28 | Codex GPT-5 | Approved-word whitelist | Added `approved_words` as the live generation validity gate, kept `word_queue` as batch state, corrected Bicep live-generation defaults, and added scripts for approval population plus unapproved-row audit/quarantine cleanup. |
 | 2026-05-24 | Claude Sonnet 4.6 | Beta deployment complete | API on Azure App Service, Next.js frontend on same B2 plan ($0 extra), urdumeaning.com live via Cloudflare DNS, 45,500 words restored to Azure PostgreSQL, automated weekly Blob Storage backups, full docs in docs/DEPLOYMENT.md |
 | 2026-05-24 | Codex GPT-5 | Launch analytics and SEO instrumentation | Added env-driven GA4 and Plausible scripts, Google/Bing verification metadata, canonical/Open Graph metadata tightening, homepage JSON-LD, and deployment docs for launch env vars |
