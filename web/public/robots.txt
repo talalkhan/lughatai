@@ -1,4 +1,16 @@
 User-agent: *
 Allow: /
 
+User-agent: AhrefsBot
+User-agent: SemrushBot
+User-agent: MJ12bot
+User-agent: DotBot
+User-agent: GPTBot
+User-agent: CCBot
+User-agent: ClaudeBot
+User-agent: Bytespider
+User-agent: PetalBot
+User-agent: Amazonbot
+Disallow: /word/
+
 Sitemap: https://urdumeaning.com/sitemap.xml
