@@ -9,6 +9,10 @@ public class Correction
     /// <summary>translation | example | poetry | other</summary>
     public string Reason { get; set; } = "other";
     public string? Notes { get; set; }
+    /// <summary>JSON snapshot of the definition exactly as it existed when the report was submitted.</summary>
+    public string? DefinitionSnapshot { get; set; }
+    public string? DefinitionModel { get; set; }
+    public DateTime? DefinitionUpdatedAt { get; set; }
     /// <summary>open | reviewed | dismissed</summary>
     public string Status { get; set; } = "open";
     public DateTime CreatedAt { get; set; }

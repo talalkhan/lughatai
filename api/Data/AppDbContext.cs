@@ -120,6 +120,9 @@ public class AppDbContext : DbContext
             entity.Property(e => e.UserId).HasColumnName("user_id");
             entity.Property(e => e.Reason).HasColumnName("reason").HasDefaultValue("other");
             entity.Property(e => e.Notes).HasColumnName("notes");
+            entity.Property(e => e.DefinitionSnapshot).HasColumnName("definition_snapshot").HasColumnType("jsonb");
+            entity.Property(e => e.DefinitionModel).HasColumnName("definition_model").HasMaxLength(100);
+            entity.Property(e => e.DefinitionUpdatedAt).HasColumnName("definition_updated_at");
             entity.Property(e => e.Status).HasColumnName("status").HasDefaultValue("open");
             entity.HasIndex(e => e.Word).HasDatabaseName("idx_corrections_word");
             entity.Property(e => e.CreatedAt).HasColumnName("created_at")

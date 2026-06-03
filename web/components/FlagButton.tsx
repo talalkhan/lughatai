@@ -5,8 +5,11 @@ import { useAuth } from "@/lib/auth";
 import { flagWord } from "@/lib/api";
 
 const REASONS = [
-  { value: "translation", label: "Wrong translation" },
-  { value: "example", label: "Bad example sentence" },
+  { value: "wrong_urdu_meaning", label: "Wrong Urdu meaning" },
+  { value: "missing_meaning", label: "Missing meaning" },
+  { value: "bad_example", label: "Bad example sentence" },
+  { value: "offensive_translation", label: "Offensive translation" },
+  { value: "audio_issue", label: "Audio issue" },
   { value: "poetry", label: "Poetry attribution" },
   { value: "other", label: "Other issue" },
 ] as const;

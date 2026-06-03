@@ -10,7 +10,14 @@ public interface IReportNotificationService
     /// Never throws; failures are logged and swallowed so the flag endpoint
     /// can't be broken by a misconfigured email provider.
     /// </summary>
-    Task NotifyAsync(string word, string reason, string? notes, int? userId);
+    Task NotifyAsync(
+        string word,
+        string reason,
+        string? notes,
+        int? userId,
+        string? definitionModel,
+        DateTime? definitionUpdatedAt,
+        string? primaryUrdu);
 }
 
 /// <summary>
@@ -46,7 +53,14 @@ public class ReportNotificationService : IReportNotificationService
         _logger = logger;
     }
 
-    public async Task NotifyAsync(string word, string reason, string? notes, int? userId)
+    public async Task NotifyAsync(
+        string word,
+        string reason,
+        string? notes,
+        int? userId,
+        string? definitionModel,
+        DateTime? definitionUpdatedAt,
+        string? primaryUrdu)
     {
         try
         {
@@ -76,13 +90,19 @@ public class ReportNotificationService : IReportNotificationService
             var wordUrl = $"{siteBaseUrl.TrimEnd('/')}/word/{Uri.EscapeDataString(word)}";
             var who = userId.HasValue ? $"user #{userId.Value}" : "anonymous";
             var safeNotes = string.IsNullOrWhiteSpace(notes) ? "(none)" : notes;
+            var model = string.IsNullOrWhiteSpace(definitionModel) ? "(unknown)" : definitionModel;
+            var updatedAt = definitionUpdatedAt?.ToString("O") ?? "(unknown)";
+            var urdu = string.IsNullOrWhiteSpace(primaryUrdu) ? "(unknown)" : primaryUrdu;
 
             var subject = $"[UrduMeaning] Report on \"{word}\" — {reason}";
             var text =
                 $"A new report was submitted on urdumeaning.com.\n\n" +
                 $"Word:   {word}\n" +
+                $"Urdu:   {urdu}\n" +
                 $"Reason: {reason}\n" +
                 $"Notes:  {safeNotes}\n" +
+                $"Model:  {model}\n" +
+                $"Definition updated at: {updatedAt}\n" +
                 $"User:   {who}\n\n" +
                 $"View word: {wordUrl}\n" +
                 $"Review queue: {siteBaseUrl.TrimEnd('/')}/api/admin/corrections\n";
@@ -92,8 +112,11 @@ public class ReportNotificationService : IReportNotificationService
                 "<h2 style=\"margin:0 0 12px\">🚩 New word report</h2>" +
                 "<table style=\"border-collapse:collapse;font-size:14px\">" +
                 $"<tr><td style=\"padding:4px 12px 4px 0;color:#666\">Word</td><td><a href=\"{wordUrl}\">{System.Net.WebUtility.HtmlEncode(word)}</a></td></tr>" +
+                $"<tr><td style=\"padding:4px 12px 4px 0;color:#666\">Urdu</td><td>{System.Net.WebUtility.HtmlEncode(urdu)}</td></tr>" +
                 $"<tr><td style=\"padding:4px 12px 4px 0;color:#666\">Reason</td><td><strong>{System.Net.WebUtility.HtmlEncode(reason)}</strong></td></tr>" +
                 $"<tr><td style=\"padding:4px 12px 4px 0;color:#666\">Notes</td><td>{System.Net.WebUtility.HtmlEncode(safeNotes)}</td></tr>" +
+                $"<tr><td style=\"padding:4px 12px 4px 0;color:#666\">Model</td><td>{System.Net.WebUtility.HtmlEncode(model)}</td></tr>" +
+                $"<tr><td style=\"padding:4px 12px 4px 0;color:#666\">Definition updated</td><td>{System.Net.WebUtility.HtmlEncode(updatedAt)}</td></tr>" +
                 $"<tr><td style=\"padding:4px 12px 4px 0;color:#666\">User</td><td>{System.Net.WebUtility.HtmlEncode(who)}</td></tr>" +
                 "</table>" +
                 $"<p style=\"margin-top:16px\"><a href=\"{wordUrl}\" style=\"background:#059669;color:#fff;padding:8px 14px;border-radius:6px;text-decoration:none\">Open word page</a></p>" +

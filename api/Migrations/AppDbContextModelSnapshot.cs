@@ -37,6 +37,19 @@ namespace UrduMeaning.Api.Migrations
                         .HasColumnName("created_at")
                         .HasDefaultValueSql("now()");
 
+                    b.Property<string>("DefinitionModel")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("definition_model");
+
+                    b.Property<string>("DefinitionSnapshot")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("definition_snapshot");
+
+                    b.Property<DateTime?>("DefinitionUpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("definition_updated_at");
+
                     b.Property<string>("Notes")
                         .HasColumnType("text")
                         .HasColumnName("notes");

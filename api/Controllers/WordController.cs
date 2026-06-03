@@ -139,7 +139,18 @@ public class WordController : ControllerBase
     [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting("flag")]
     public async Task<IActionResult> FlagWord(string word, [FromBody] FlagRequest req)
     {
-        var allowed = new[] { "translation", "example", "poetry", "other" };
+        var allowed = new[]
+        {
+            "translation",
+            "wrong_urdu_meaning",
+            "missing_meaning",
+            "example",
+            "bad_example",
+            "offensive_translation",
+            "audio_issue",
+            "poetry",
+            "other"
+        };
         if (!allowed.Contains(req.Reason)) return BadRequest(new { error = "Invalid reason" });
         if (string.IsNullOrWhiteSpace(word) || word.Length > 150) return BadRequest(new { error = "Invalid word" });
         if (req.Notes?.Length > 500) return BadRequest(new { error = "Notes must be 500 characters or fewer" });
@@ -149,12 +160,19 @@ public class WordController : ControllerBase
         if (idClaim != null && int.TryParse(idClaim, out var parsedUserId))
             userId = parsedUserId;
 
-        var inserted = await _repo.AddCorrectionAsync(word, userId, req.Reason, req.Notes);
+        var report = await _repo.AddCorrectionAsync(word, userId, req.Reason, req.Notes);
 
         // Fire-and-forget email — only on the first report within the 24h dedupe window,
         // so duplicates don't spam the admin inbox. NotifyAsync never throws.
-        if (inserted)
-            _ = _reportNotifier.NotifyAsync(word, req.Reason, req.Notes, userId);
+        if (report.Inserted)
+            _ = _reportNotifier.NotifyAsync(
+                word,
+                req.Reason,
+                req.Notes,
+                userId,
+                report.DefinitionModel,
+                report.DefinitionUpdatedAt,
+                report.PrimaryUrdu);
 
         return Ok(new { flagged = true });
     }

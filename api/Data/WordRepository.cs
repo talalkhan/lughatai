@@ -21,7 +21,7 @@ public interface IWordRepository
     Task UpdateAudioUrlAsync(string wordLower, string lang, string url);
     Task<IEnumerable<SearchResult>> SearchByRomanUrduAsync(string query, int limit);
     Task RecordHistoryAsync(int userId, string word);
-    Task<bool> AddCorrectionAsync(string word, int? userId, string reason, string? notes);
+    Task<CorrectionInsertResult> AddCorrectionAsync(string word, int? userId, string reason, string? notes);
     Task<IEnumerable<dynamic>> GetOpenCorrectionsAsync();
     Task<IEnumerable<dynamic>> GetUnverifiedPoetryAsync();
     Task MarkPoetryVerifiedAsync(string wordLower);
@@ -37,6 +37,11 @@ public interface IWordRepository
 public record SearchResult(string Word, string? Urdu, string? Difficulty);
 public record WordSummary(string Word, string? Urdu, string? Difficulty, string? DefinitionEn, string? Emoji);
 public record QueueStatus(int Pending, int Processing, int Done, int Failed);
+public record CorrectionInsertResult(
+    bool Inserted,
+    string? DefinitionModel,
+    DateTime? DefinitionUpdatedAt,
+    string? PrimaryUrdu);
 
 public class WordRepository : IWordRepository
 {
@@ -251,7 +256,7 @@ public class WordRepository : IWordRepository
             """, new { userId });
     }
 
-    public async Task<bool> AddCorrectionAsync(string word, int? userId, string reason, string? notes)
+    public async Task<CorrectionInsertResult> AddCorrectionAsync(string word, int? userId, string reason, string? notes)
     {
         using var conn = Connection();
         var normalizedWord = word.ToLowerInvariant();
@@ -263,19 +268,60 @@ public class WordRepository : IWordRepository
             : "SELECT 1 FROM corrections WHERE word = @word AND reason = @reason AND user_id IS NULL AND status = 'open' AND created_at > NOW() - INTERVAL '24 hours'";
 
         var exists = await conn.ExecuteScalarAsync<int?>(duplicateCheck, new { word = normalizedWord, reason, userId });
-        if (exists.HasValue) return false;
+        if (exists.HasValue) return new CorrectionInsertResult(false, null, null, null);
 
-        await conn.ExecuteAsync(
-            "INSERT INTO corrections (word, user_id, reason, notes) VALUES (@word, @userId, @reason, @notes)",
-            new { word = normalizedWord, userId, reason, notes });
-        return true;
+        var inserted = await conn.QuerySingleAsync<CorrectionInsertResult>("""
+            INSERT INTO corrections (
+                word,
+                user_id,
+                reason,
+                notes,
+                definition_snapshot,
+                definition_model,
+                definition_updated_at
+            )
+            SELECT
+                @word,
+                @userId,
+                @reason,
+                @notes,
+                wd.data,
+                wd.model,
+                wd.updated_at
+            FROM (SELECT 1) anchor
+            LEFT JOIN word_definitions wd ON wd.word_lower = @word
+            RETURNING
+                true AS inserted,
+                definition_model AS definitionModel,
+                definition_updated_at AS definitionUpdatedAt,
+                definition_snapshot->'script_variants'->>'nastaliq' AS primaryUrdu
+            """, new { word = normalizedWord, userId, reason, notes });
+
+        return inserted;
     }
 
     public async Task<IEnumerable<dynamic>> GetOpenCorrectionsAsync()
     {
         using var conn = Connection();
         return await conn.QueryAsync(
-            "SELECT id, word, user_id, reason, notes, status, created_at FROM corrections WHERE status = 'open' ORDER BY created_at DESC LIMIT 100");
+            """
+            SELECT
+                id,
+                word,
+                user_id,
+                reason,
+                notes,
+                status,
+                created_at,
+                definition_model,
+                definition_updated_at,
+                definition_snapshot->'script_variants'->>'nastaliq' AS primary_urdu,
+                definition_snapshot->'_meta'->>'stage' AS stage
+            FROM corrections
+            WHERE status = 'open'
+            ORDER BY created_at DESC
+            LIMIT 100
+            """);
     }
 
     public async Task<IEnumerable<dynamic>> GetUnverifiedPoetryAsync()
