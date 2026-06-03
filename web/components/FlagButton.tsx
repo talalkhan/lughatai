@@ -25,7 +25,7 @@ export default function FlagButton({
 }) {
   const { accessToken } = useAuth();
   const [open, setOpen] = useState(false);
-  const [reason, setReason] = useState<Reason>("translation");
+  const [reason, setReason] = useState<Reason>("wrong_urdu_meaning");
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "done">("idle");
 
