@@ -12,6 +12,27 @@ UrduMeaning is an AI-powered English-to-Urdu dictionary web app.
 
 ---
 
+## ⚠ Phase Numbering — Two Schemes, Do Not Conflate
+
+The word "Phase" means two different things in this project. Everywhere in
+**this file** it means a **product phase** (PRD Section 14 — what ships to
+users, numbered 1–3). In **PROJECT_PLAN.md** it means a **build phase**
+(an execution milestone, numbered 0–6). They are not the same number.
+
+| Product phase (this file) | What it delivers | Build phases (PROJECT_PLAN.md) |
+|---|---|---|
+| Phase 1 | MVP: search, word detail, WOTD, browse, deployed | 0 Bootstrap, 1 MVP Backend, 2 MVP Frontend, 3 Integration & Deploy |
+| Phase 2 | Accounts: auth, favorites, history, flashcards, quiz | 4 User Accounts & Phase 2 Features |
+| Phase 3 | PWA/offline, Devanagari, monetization | 5 PWA, 6 Monetization |
+
+So "Monetization — Phase 3" (decision #10 below) and "Phase 6 —
+Monetization" in PROJECT_PLAN.md are the **same work**, not a contradiction.
+PROJECT_PLAN.md is the authority on task-level status; this file is the
+authority on what was decided and why. When you cite a phase, say which
+kind — "product Phase 3" or "build Phase 6" — rather than a bare number.
+
+---
+
 ## Repository Layout
 
 ```
@@ -66,7 +87,7 @@ lughatai/
 | Layer | Technology | Version |
 |-------|-----------|---------|
 | Frontend | Next.js + React | 14 (App Router) |
-| PWA | next-pwa (Workbox) | Phase 3 |
+| PWA | next-pwa (Workbox) | Product Phase 3 |
 | Backend | ASP.NET Core | 8 |
 | ORM | Dapper (queries) + EF Core (migrations) | latest |
 | Database | PostgreSQL with JSONB | 16 |
@@ -78,7 +99,7 @@ lughatai/
 | Cloud | Microsoft Azure | - |
 | CI/CD | Azure DevOps Pipelines | - |
 | Monitoring | Azure Application Insights + Datadog | App Insights active (beta); Datadog optional |
-| Auth | ASP.NET Core Identity + JWT | Phase 2 |
+| Auth | ASP.NET Core Identity + JWT | Product Phase 2 |
 
 ---
 
@@ -350,19 +371,21 @@ Invoke-RestMethod -Method POST http://localhost:5000/api/admin/queue/add `
 ## Architecture Decisions (Locked — Do Not Revisit)
 
 These are final decisions from PRD Section 14. Do not change without explicit user instruction.
+Phase numbers below are **product phases** — see the phase-numbering key above for the
+mapping to PROJECT_PLAN.md's build phases.
 
 | # | Decision | Detail |
 |---|----------|--------|
 | 1 | App name | UrduMeaning |
-| 2 | Roman Urdu search | String match against stored `roman_urdu` field only (Phase 1). AI-powered in Phase 2. |
+| 2 | Roman Urdu search | String match against stored `roman_urdu` field only (product Phase 1). AI-powered in product Phase 2. |
 | 3 | Audio generation | Lazy — generate on first play, cache forever in Azure Blob |
-| 4 | Devanagari | Skip Phase 1 & 2. JSON field reserved. Populate in Phase 3. |
+| 4 | Devanagari | Skip product Phase 1 & 2. JSON field reserved. Populate in product Phase 3. |
 | 5 | Islamic references | Only include when AI finds genuine verifiable reference. Null otherwise. |
-| 6 | Poetry attribution | AI-generated in Phase 1 with disclaimer. Verify in Phase 2. |
-| 7 | Offline storage | PWA Service Worker + IndexedDB. Phase 3. |
-| 8 | User corrections | Flag button only. Logs to `corrections` table. No free-text Phase 1. |
+| 6 | Poetry attribution | AI-generated in product Phase 1 with disclaimer. Verify in product Phase 2. |
+| 7 | Offline storage | PWA Service Worker + IndexedDB. Product Phase 3 (build Phase 5). |
+| 8 | User corrections | Flag button only. Logs to `corrections` table. No free-text in product Phase 1. |
 | 9 | Platform | Responsive web (Next.js) + PWA. No native app. |
-| 10 | Monetization | Stripe Checkout (web-native). Phase 3. |
+| 10 | Monetization | Stripe Checkout (web-native). Product Phase 3 (build Phase 6 — not started). |
 
 ---
 
@@ -576,7 +599,7 @@ The `meanings[]` array supports multiple parts of speech. Each meaning has:
 
 ## API Endpoints Reference
 
-| Method | Route | Auth | Phase |
+| Method | Route | Auth | Product phase |
 |--------|-------|------|-------|
 | GET | `/api/word/{word}` | None | 1 |
 | GET | `/api/search?q=&limit=10` | None | 1 |
