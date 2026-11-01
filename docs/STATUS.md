@@ -2,6 +2,7 @@
 
 > **The first thing to read after AGENTS.md.** Keep it short and true. Update at the end of every session.
 > Items marked *(as of DATE)* come from docs/people, not from a live check — the repo cannot see Azure. Re-verify before quoting them as fact.
+> **App Insights (`lughatai-beta-insights`) retains only 90 days.** Any "since 2026-06-03" framing below that predates roughly 2026-08-03 is wrong — that's just where the visible window starts, not when something actually began. For cumulative lifetime facts (total registered users, total words, etc.) trust the database/API, not telemetry.
 
 ```
 Last updated : 2026-11-01
@@ -29,15 +30,21 @@ UrduMeaning is live in beta. English-to-Urdu entries are AI-generated once and s
 | `Notifications__Email__Enabled` | `true` | matches |
 | Web: `NEXT_PUBLIC_API_URL` | `https://lughatai-beta-api.azurewebsites.net` | matches |
 | Web: `SITEMAP_WORD_LIMIT` | not set in Azure App Settings (code default `1000` applies) | matches effectively |
-| App Insights — `api.openai.com` dependency calls since 2026-06-03 | **774 calls**, first at 2026-08-04, last at 2026-11-01 (today) | Expected under current policy — live generation firing for ~3 months, correlated with a crawl-traffic spike starting 2026-08-31. Previously this doc said it must stay zero; that was wrong, see below |
-| App Insights — `api.anthropic.com` dependency calls, ever | **0** | matches (Anthropic path still unused) |
-| `/api/word/{word}` traffic since 2026-06-03 | 705,483× 200, 57,309× 404, 81,318× 429 (bot-blocked), 4,905× 500, 174× 503 | New data — this volume/404 check was flagged in docs as never having been done |
+| App Insights — `api.openai.com` dependency calls, visible window (2026-08-03 to 2026-11-01, 90-day retention) | **774 calls**, earliest visible 2026-08-04 | Expected under current policy. "Earliest visible" ≠ "first ever" — retention cuts off before that; calls may have been happening since the accounts/live-gen features shipped (~2026-05) |
+| App Insights — `api.anthropic.com` dependency calls, visible window | **0** | matches (Anthropic path still unused) |
+| `/api/word/{word}` traffic, visible window | 849,577 total; 705,483× 200, 57,309× 404, 81,318× 429 (bot-blocked), 4,905× 500, 174× 503 | Heavily bot-dominated — see engagement note below |
+| Real registered users | **5** (owner-confirmed from `users` table directly, 2026-11-01) | App Insights only showed 1 `POST api/auth/register` in its 90-day window — the other 4 predate retention. DB is the correct source for this number, not telemetry |
+| Human-engagement proxies, visible window | `api/search` 1,222 · `word/{word}/audio` 139 · `word/random` 303, vs. 849,577 word-page hits | Real human interaction looks tiny relative to raw traffic, which is likely dominated by search-engine crawlers walking the sitemap |
 | Hosting | Azure UAE North, B2 plan, Cloudflare DNS; weekly DB backup to Blob (12-week retention) | unchanged, not re-verified this session |
 | Report emails | Gmail SMTP to admin; `Notifications__Email__Enabled=true` in Azure | matches |
 
 ### ✅ Resolved 2026-11-01: `WordGeneration__Enabled=true` is intentional policy, not drift
 
-When this was first discovered live-verified as `true` in production, it contradicted the old CLAUDE.md language calling it an "emergency kill switch" that must stay `false`. Owner reviewed and confirmed the real policy: generate any approved word on cache miss no matter who/what triggers the lookup (real user or crawler/bot) — `WordGeneration:RequireApprovedWord=true` is the actual safety control, not the `Enabled` switch. 774 `api.openai.com` calls since 2026-08-04 (rising with a crawl-traffic spike starting 2026-08-31) are expected behavior under this policy, on cheap `gpt-4o-mini` calls gated by the approved-words whitelist. Docs updated: `docs/COST_CONTROLS.md`, `docs/DECISIONS.md` (#11), `AGENTS.md` guardrail #1.
+When this was first discovered live-verified as `true` in production, it contradicted the old CLAUDE.md language calling it an "emergency kill switch" that must stay `false`. Owner reviewed and confirmed the real policy: generate any approved word on cache miss no matter who/what triggers the lookup (real user or crawler/bot) — `WordGeneration:RequireApprovedWord=true` is the actual safety control, not the `Enabled` switch. 774 `api.openai.com` calls in the visible 90-day App Insights window (rising with a crawl-traffic spike starting 2026-08-31) are expected behavior under this policy, on cheap `gpt-4o-mini` calls gated by the approved-words whitelist. Docs updated: `docs/COST_CONTROLS.md`, `docs/DECISIONS.md` (#11), `AGENTS.md` guardrail #1.
+
+### 📊 Engagement reality check (2026-11-01): traffic looks bot-dominated, real usage is tiny
+
+Only 5 user accounts have ever been registered (confirmed by owner from the `users` table — App Insights' 90-day window only showed 1, the other 4 predate retention). Against 849,577 `/api/word/{word}` hits in the same 90-day window, there were only 1,222 real searches, 303 random-word requests, and 139 audio plays. This strongly suggests the large majority of traffic is search-engine crawlers walking the sitemap, not people reading definitions. **Before investing in monetization (ads or Stripe), the real open question is whether this product has meaningful organic human traffic at all** — ad revenue in particular depends on human impressions, and a bot-heavy site risks an "invalid traffic" flag from an ad network rather than earning anything.
 
 ### ⚠️ Secrets were displayed in this session
 
@@ -49,9 +56,9 @@ Build phases 0–5 complete (backend, frontend, deploy, accounts, PWA). Cost-con
 
 ## In flight / open
 
-1. **SEO reopening monitoring — checked 2026-11-01, working as intended.** `api.openai.com` dependency calls are not zero (774 since 2026-08-04) — expected, since `WordGeneration__Enabled=true` is now documented policy, not a leak. `/api/word/*` volume is heavy (up to 155k/week) with thousands of 404s/week since the 2026-08-31 crawl spike. Still worth deciding whether to raise `SITEMAP_WORD_LIMIT` based on that volume.
+1. **SEO reopening monitoring — checked 2026-11-01, working as intended.** `api.openai.com` dependency calls are not zero (774 in the visible 90-day window) — expected, since `WordGeneration__Enabled=true` is now documented policy, not a leak. `/api/word/*` volume is heavy (up to 155k/week) with thousands of 404s/week since the 2026-08-31 crawl spike. Still worth deciding whether to raise `SITEMAP_WORD_LIMIT` based on that volume.
 2. **Semantic repair of Urdu translations** — paused. ~4.3k heuristic "assistant-like" rows remain; classified as review/defer, not confirmed bad. No safe automated bulk fix (see HISTORY 2026-06-02). Don't auto-regenerate.
-3. **Monetization (build Phase 6)** — not started (0/8). An unmerged branch `origin/claude/monetization-status-oqh7s3` only edits docs (phase-numbering clarification; now folded into `docs/DECISIONS.md`).
+3. **Monetization (build Phase 6)** — not started (0/8). Open question ahead of starting: see the engagement reality-check above — only 5 users have ever registered, and traffic looks crawler-dominated. Owner may want to confirm there's real organic human demand before building Stripe/ads.
 4. **Report inbox** — user reports land in `corrections`; review via `GET /api/admin/corrections`.
 
 ## Risks & known gaps
@@ -61,7 +68,7 @@ Build phases 0–5 complete (backend, frontend, deploy, accounts, PWA). Cost-con
 - Anthropic path unproven; app effectively runs on OpenAI.
 - **Undocumented Cloudflare Workers Builds integration:** GitHub PR checks show a `Workers Builds: urdumeaning` check (Cloudflare account project `urdumeaning`) that fails instantly on PR #2 (docs-only). The repo has no `wrangler` config and docs say Cloudflare is DNS only (prod web is on Azure). Owner should confirm whether this Cloudflare project is intended; if not, disconnect it in the Cloudflare dashboard, otherwise document it in DEPLOYMENT.md. Observed 2026-11-01; cause not confirmed (dashboard not accessible to agents).
 - Legacy docs mention Azure DevOps pipelines (`.azure/`); real CI/CD is GitHub Actions.
-- Datadog is optional/not confirmed active; App Insights is the monitoring source of truth.
+- Datadog is optional/not confirmed active; App Insights is the monitoring source of truth, but **only retains 90 days** — don't trust "since <date>" claims against it for dates further back than that; use the DB/API for lifetime cumulative facts instead.
 - Secrets were pasted in chats historically — rotation guidance is in `docs/OPERATIONS.md` (Gmail app password). Happened again 2026-11-01 during this verification session (`az webapp config appsettings list` output included full plaintext secrets); see production snapshot note above.
 
 ## Suggested next steps (propose to owner, don't assume)
