@@ -1,0 +1,20 @@
+name: Docs freshness
+
+on:
+  pull_request:
+    branches: [master]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require docs/STATUS.md update when code changes
+        run: |
+          changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+          if echo "$changed" | grep -qE '^(api|web|infrastructure|scripts)/' && ! echo "$changed" | grep -q '^docs/STATUS.md$'; then
+            echo "::error::Code changed but docs/STATUS.md was not updated. Update it (and PROJECT_PLAN.md / docs/HISTORY.md if relevant)."
+            exit 1
+          fi
