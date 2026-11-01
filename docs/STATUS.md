@@ -45,6 +45,7 @@ Build phases 0–5 complete (backend, frontend, deploy, accounts, PWA). Cost-con
 - No API unit tests; only 4 Playwright specs. Merge to `master` auto-deploys to prod.
 - Several hosted-service flags default differently in code vs. docs; production values are only in Azure App Settings (not in repo).
 - Anthropic path unproven; app effectively runs on OpenAI.
+- **Undocumented Cloudflare Workers Builds integration:** GitHub PR checks show a `Workers Builds: urdumeaning` check (Cloudflare account project `urdumeaning`) that fails instantly on PR #2 (docs-only). The repo has no `wrangler` config and docs say Cloudflare is DNS only (prod web is on Azure). Owner should confirm whether this Cloudflare project is intended; if not, disconnect it in the Cloudflare dashboard, otherwise document it in DEPLOYMENT.md. Observed 2026-11-01; cause not confirmed (dashboard not accessible to agents).
 - Legacy docs mention Azure DevOps pipelines (`.azure/`); real CI/CD is GitHub Actions.
 - Datadog is optional/not confirmed active; App Insights is the monitoring source of truth.
 - Secrets were pasted in chats historically — rotation guidance is in `docs/OPERATIONS.md` (Gmail app password).
