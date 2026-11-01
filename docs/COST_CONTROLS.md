@@ -41,48 +41,54 @@ drained $10 overnight with no users on the site.
 
 To bulk-generate words use: `scripts/batch_submit_openai.ps1` (50% discount, async).
 
-### WordGeneration and Enrichment — both OFF by default in production
+### WordGeneration — ON in production by design; `RequireApprovedWord` is the real gate
 
-Two master on/off switches guard against bot-triggered AI spend:
-
-| Config key | Default (appsettings.json) | Production (Azure) | What it controls |
+| Config key | Default (appsettings.json) | Production (Azure, verified 2026-11-01) | What it controls |
 |---|---|---|---|
-| `WordGeneration:Enabled` | `false` | `false` | Live AI generation in `WordService` for single words not in DB |
+| `WordGeneration:Enabled` | `false` | **`true`** | Live AI generation in `WordService` for single words not in DB |
 | `WordGeneration:RequireApprovedWord` | `true` | `true` | Blocks live AI generation unless the missing word already exists in `approved_words` |
 | `Enrichment:Enabled` | `false` | `false` | Background enrichment in `WordEnrichmentProcessor` |
 
-**`WordGeneration:Enabled` is `false` in production as of 2026-05-27 night.**
-Keep it off until live generation is intentionally re-enabled with active monitoring.
-The code also blocks crawler-shaped slugs before generation: whitespace, encoded `%...`
-URLs, `+`, hyphenated/non-alpha slugs, and any normalized value that is not a clean
-single English token. This protects against crawlers hitting arbitrary `/word/...` pages
-and turning SSR into AI spend.
+**Policy (confirmed by owner 2026-11-01): generate a word on cache miss regardless of
+who or what triggers the lookup** — a real user, Googlebot, or any other crawler. The
+source of the request doesn't matter; what matters is whether the word is in
+`approved_words`. That whitelist check (`RequireApprovedWord=true`) is the actual safety
+control, not the `Enabled` switch — **do not loosen `RequireApprovedWord`**, since that's
+what stops crawler-shaped garbage strings (e.g. `producedunderfactorysupervision`) from
+reaching AI and getting hallucinated into the DB permanently. The code also blocks
+crawler-shaped slugs before generation even reaches the whitelist check: whitespace,
+encoded `%...` URLs, `+`, hyphenated/non-alpha slugs, and anything that isn't a clean
+single English token.
 
-Live generation also requires whitelist membership by default. Keep
-`WordGeneration:RequireApprovedWord=true`; otherwise clean alphabetic crawler strings like
-`producedunderfactorysupervision` can be sent to AI, hallucinated, and saved permanently.
-`approved_words` is the durable validity table; `word_queue` is only batch processing state
-and may be empty in production. Use `scripts/populate_approved_words_from_bulk.ps1` to
-load the generated 340k-word list into `approved_words`, and use
+`approved_words` is the durable validity table; `word_queue` is only batch processing
+state and may be empty in production. Use `scripts/populate_approved_words_from_bulk.ps1`
+to load the generated 340k-word list into `approved_words`, and use
 `scripts/audit_unqueued_definitions.sql` plus `scripts/cleanup_unapproved_definitions.sql`
 to inspect/quarantine existing bad generated rows before cleanup.
 
-SEO crawl control: valid single-word `/word/...` pages can still be crawled at high
-volume and force SSR to call `/api/word/{word}`. Because live generation is now guarded
-by `WordGeneration:Enabled=false` in production plus `RequireApprovedWord=true`, the web
-app may expose known word pages to search crawlers again, but only in a controlled way:
-`robots.txt` allows `/word/` for general crawlers, `sitemap.xml` lists only existing
-words returned by `/api/browse` and is capped by `SITEMAP_WORD_LIMIT` (default 1000), and
-`web/middleware.ts` still blocks high-noise crawlers such as Ahrefs/Semrush/GPTBot while
-allowing Googlebot/Bingbot/DuckDuckBot.
+**History:** `WordGeneration:Enabled=false` was previously documented here as a hard
+"must stay off" kill switch, adopted after the BatchProcessor incident below. A live
+Azure check on 2026-11-01 found it had actually been `true` since at least 2026-08-04
+(774 `api.openai.com` calls recorded in App Insights, rising alongside a crawl-traffic
+spike that started 2026-08-31). The owner reviewed this and confirmed it as the intended
+policy, not accidental drift — see the policy line above. If a future cost spike requires
+freezing generation entirely, set `WordGeneration:Enabled=false` in Azure App Service
+config (no deployment needed); under current policy that's an emergency-only action, not
+the default state.
 
-After reopening SEO, monitor Application Insights Dependencies for `api.openai.com` and
-`api.anthropic.com`; these should remain at zero unless a deliberate generation/enrichment
-run is enabled. Also monitor `/api/word/*` request volume and 404s before raising
-`SITEMAP_WORD_LIMIT`.
+SEO crawl control: valid single-word `/word/...` pages can be crawled at high volume and
+force SSR to call `/api/word/{word}`, and under current policy that can legitimately
+trigger generation for any approved word a crawler happens to hit first — this is
+expected, not a leak. `robots.txt` allows `/word/` for general crawlers, `sitemap.xml`
+lists only existing words returned by `/api/browse` and is capped by `SITEMAP_WORD_LIMIT`
+(default 1000), and `web/middleware.ts` still blocks high-noise crawlers such as
+Ahrefs/Semrush/GPTBot while allowing Googlebot/Bingbot/DuckDuckBot — `RequireApprovedWord`
+remains the backstop against those blocked bots' crawl patterns if any slip through.
 
-**`WordGeneration:Enabled=false`** is an emergency kill switch — set it in Azure App
-Service config (no deployment needed) to freeze new word generation if AI costs spike.
+Monitor Application Insights Dependencies for `api.openai.com` periodically to sanity-check
+volume/cost stays proportionate to real dictionary growth; `api.anthropic.com` should stay
+at zero until the Anthropic account/model path is deliberately revisited. Also keep an eye
+on `/api/word/*` request volume and 404s before raising `SITEMAP_WORD_LIMIT` further.
 
 ### WordEnrichmentProcessor — also rate-limited to 30/hour
 

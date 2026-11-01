@@ -29,3 +29,4 @@ So "Monetization — product Phase 3" and "build Phase 6 — Monetization" are t
 | 8 | User corrections | Flag button only. Logs to `corrections` table. No free-text. |
 | 9 | Platform | Responsive web (Next.js) + PWA. No native app. |
 | 10 | Monetization | Stripe Checkout (web-native). Product Phase 3 = build Phase 6 — not started. |
+| 11 | Live word generation scope | Generate a word on cache miss regardless of whether the lookup came from a real user or a crawler/bot — source doesn't matter. `WordGeneration:RequireApprovedWord=true` (whitelist membership) is the actual safety gate, not `WordGeneration:Enabled`. Confirmed by owner 2026-11-01; see `docs/COST_CONTROLS.md`. |

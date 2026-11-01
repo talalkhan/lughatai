@@ -46,7 +46,7 @@ Follow the guardrails below and `docs/CONVENTIONS.md`. Work on the branch you we
 
 ## Hard guardrails (summary — full detail in `docs/COST_CONTROLS.md`)
 
-1. **No unintended AI spend.** Production runs with `WordGeneration:Enabled=false`, `WordGeneration:RequireApprovedWord=true`, `BatchProcessor:Enabled=false`, `Enrichment:Enabled=false` (capped 30/hr if on). Never enable or loosen these without explicit owner instruction. Bulk generation uses `scripts/batch_submit_openai.ps1` (Batch API), never the live processor.
+1. **No unintended AI spend.** Production runs with `WordGeneration:Enabled=true` (intentional — generate any approved word on cache miss regardless of source, see `docs/COST_CONTROLS.md`), `WordGeneration:RequireApprovedWord=true` (the real safety gate — never loosen this), `BatchProcessor:Enabled=false`, `Enrichment:Enabled=false` (capped 30/hr if on). Never loosen `RequireApprovedWord` or enable `BatchProcessor`/`Enrichment` without explicit owner instruction. Bulk generation uses `scripts/batch_submit_openai.ps1` (Batch API), never the live processor.
 2. **Never call AI from controllers**; go through `WordService`. Don't remove the `React.cache()` wrapper in `web/app/word/[slug]/page.tsx`, the slug validation, or `web/middleware.ts` crawler rules.
 3. **Never run `docker compose down -v`** or any destructive DB operation without a fresh backup (`data/word_definitions_backup*`). Look at a target before deleting or overwriting.
 4. **No secrets in the repo.** Config via env vars / Azure App Settings. `api/appsettings.Development.json` is gitignored.
