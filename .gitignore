@@ -59,7 +59,8 @@ api/publish.zip
 scripts/words/processed/
 
 # Claude Code session files
-.claude/
+.claude/*
+!.claude/settings.json
 
 # Misc log files
 api_log.txt
